@@ -145,6 +145,27 @@ export const salesOrdersApi = {
     api.patch<{ ok?: boolean; status?: string; invoiceNo?: string; challanNo?: string; podStatus?: string; error?: string }>(`/api/sales-orders`, { id, ...body }),
 }
 
+// ─── Transport Vendors ──────────────────────────────────────────
+export const transportVendorsApi = {
+  list: (search?: string) =>
+    api.get<unknown[]>(`/api/transport-vendors${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+  create: (input: any) => api.post<unknown>('/api/transport-vendors', input),
+}
+
+// ─── Courier Vendors ────────────────────────────────────────────
+export const courierVendorsApi = {
+  list: (search?: string) =>
+    api.get<unknown[]>(`/api/courier-vendors${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+  create: (input: any) => api.post<unknown>('/api/courier-vendors', input),
+}
+
+// ─── Vehicles (for auto-fill) ───────────────────────────────────
+export const vehiclesApi = {
+  search: (q: string) =>
+    api.get<unknown[]>(`/api/vehicles?search=${encodeURIComponent(q.toUpperCase())}`),
+  create: (input: any) => api.post<unknown>('/api/vehicles', input),
+}
+
 // ─── System ──────────────────────────────────────────────────────
 export const systemApi = {
   reseed: () => api.post<{ ok: boolean; message?: string; error?: string }>('/api/seed'),

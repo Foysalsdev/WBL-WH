@@ -1,22 +1,26 @@
 'use client'
 
-import { Database, Boxes, Users, Truck, Building2, ChevronRight } from 'lucide-react'
+import { Database, Boxes, Users, Truck, Building2, ChevronRight, Send } from 'lucide-react'
 import { PageHeader } from '@/components/system'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useUI } from '@/lib/store/ui'
 import { ProductsTab } from './ProductsTab'
 import { DealersTab, SourcingTab } from './PartyTab'
 import { WarehousesTab } from './WarehousesTab'
+import { TransportVendorsTab } from './TransportVendorsTab'
+import { CourierVendorsTab } from './CourierVendorsTab'
 
 // ═══════════════════════════════════════════════════════════════
 //  CatalogPage — Whirlpool BD master data
 // ═══════════════════════════════════════════════════════════════
 
 const TAB_META: Record<string, { label: string; description: string }> = {
-  products:   { label: 'Products',         description: 'Whirlpool appliance catalog — SKUs, pricing, stock levels' },
-  customers:  { label: 'Dealers',          description: 'Whirlpool dealer & showroom network across Bangladesh' },
-  suppliers:  { label: 'Sourcing partners',description: 'Whirlpool sourcing entities (Corp USA, India, Thailand)' },
-  warehouses: { label: 'Warehouses',       description: 'Storage facilities with location grids' },
+  products:    { label: 'Products',          description: 'Whirlpool appliance catalog — SKUs, pricing, stock levels' },
+  customers:   { label: 'Dealers',           description: 'Whirlpool dealer & showroom network across Bangladesh' },
+  suppliers:   { label: 'Sourcing partners', description: 'Whirlpool sourcing entities (Corp USA, India, Thailand)' },
+  warehouses:  { label: 'Warehouses',        description: 'Storage facilities with location grids' },
+  transport:   { label: 'Transport Vendors', description: 'Transport vendors with vehicles & drivers — auto-fill on dispatch' },
+  courier:     { label: 'Courier Vendors',   description: '3rd party courier vendors (Steadfast, Pathao, REDX, etc.)' },
 }
 
 export function CatalogPage() {
@@ -27,7 +31,7 @@ export function CatalogPage() {
     <div className="p-4 md:p-6 space-y-6 max-w-[1600px] mx-auto">
       <PageHeader
         title="Catalog & Parties"
-        description="Whirlpool product catalog, dealer network, sourcing partners and warehouse locations."
+        description="Whirlpool product catalog, dealer network, sourcing, warehouses, transport & courier vendors."
         icon={Database}
         breadcrumb={
           <>
@@ -46,12 +50,16 @@ export function CatalogPage() {
           <TabsTrigger value="customers"><Users className="h-4 w-4 mr-1.5" />Dealers</TabsTrigger>
           <TabsTrigger value="suppliers"><Truck className="h-4 w-4 mr-1.5" />Sourcing</TabsTrigger>
           <TabsTrigger value="warehouses"><Building2 className="h-4 w-4 mr-1.5" />Warehouses</TabsTrigger>
+          <TabsTrigger value="transport"><Truck className="h-4 w-4 mr-1.5" />Transport</TabsTrigger>
+          <TabsTrigger value="courier"><Send className="h-4 w-4 mr-1.5" />Courier</TabsTrigger>
         </TabsList>
         <div className="mt-3 mb-1 text-sm text-muted-foreground">{meta.description}</div>
         <TabsContent value="products" className="mt-4 animate-fade-in"><ProductsTab /></TabsContent>
         <TabsContent value="customers" className="mt-4 animate-fade-in"><DealersTab /></TabsContent>
         <TabsContent value="suppliers" className="mt-4 animate-fade-in"><SourcingTab /></TabsContent>
         <TabsContent value="warehouses" className="mt-4 animate-fade-in"><WarehousesTab /></TabsContent>
+        <TabsContent value="transport" className="mt-4 animate-fade-in"><TransportVendorsTab /></TabsContent>
+        <TabsContent value="courier" className="mt-4 animate-fade-in"><CourierVendorsTab /></TabsContent>
       </Tabs>
     </div>
   )

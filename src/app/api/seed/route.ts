@@ -11,6 +11,8 @@ export async function POST() {
     const { PrismaClient } = await import('@prisma/client')
     const db = new PrismaClient()
     await db.auditLog.deleteMany()
+    await db.dispatchItem.deleteMany()
+    await db.dispatch.deleteMany()
     await db.movement.deleteMany()
     await db.salesOrderItem.deleteMany()
     await db.salesOrder.deleteMany()
@@ -22,6 +24,9 @@ export async function POST() {
     await db.product.deleteMany()
     await db.customer.deleteMany()
     await db.supplier.deleteMany()
+    await db.vehicle.deleteMany()
+    await db.transportVendor.deleteMany()
+    await db.courierVendor.deleteMany()
     await db.user.deleteMany()
 
     // run seed script via bun

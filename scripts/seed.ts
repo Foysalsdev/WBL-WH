@@ -116,6 +116,30 @@ async function main() {
     })
   }
 
+  // ── Transport Vendors + Vehicles ─────────────────────
+  const tv1 = await db.transportVendor.create({ data: { code: 'TV-001', name: 'Karim Transport Agency', phone: '+8801712000001', address: 'Tejgaon, Dhaka' } })
+  const tv2 = await db.transportVendor.create({ data: { code: 'TV-002', name: 'Rahman Logistics Ltd', phone: '+8801712000002', address: 'Gabtoli, Dhaka' } })
+  const tv3 = await db.transportVendor.create({ data: { code: 'TV-003', name: 'Chittagong Carriers', phone: '+8801712000003', address: 'Agrabad, Chittagong' } })
+
+  await db.vehicle.createMany({
+    data: [
+      { vehicleNo: 'DM TA 12-1212', transportVendorId: tv1.id, driverName: 'Karim Uddin', driverPhone: '+8801812000001' },
+      { vehicleNo: 'DM GA 11-3456', transportVendorId: tv1.id, driverName: 'Jewel Ahmed', driverPhone: '+8801812000002' },
+      { vehicleNo: 'DM KA 08-7788', transportVendorId: tv2.id, driverName: 'Abdul Malek', driverPhone: '+8801812000003' },
+      { vehicleNo: 'CTG TA 03-9012', transportVendorId: tv3.id, driverName: 'Mohsin Reza', driverPhone: '+8801812000004' },
+    ],
+  })
+
+  // ── Courier Vendors ──────────────────────────────────
+  await db.courierVendor.createMany({
+    data: [
+      { code: 'CR-001', name: 'Steadfast', phone: '+8809678000001', address: 'Banani, Dhaka' },
+      { code: 'CR-002', name: 'Pathao', phone: '+8809678000002', address: 'Gulshan, Dhaka' },
+      { code: 'CR-003', name: 'REDX', phone: '+8809678000003', address: 'Mirpur, Dhaka' },
+      { code: 'CR-004', name: 'Sundarban Courier', phone: '+8809678000004', address: 'Motijheel, Dhaka' },
+    ],
+  })
+
   // ── Purchase Orders (Inbound) with GRN detail ────────
   const po1 = await db.purchaseOrder.create({
     data: {

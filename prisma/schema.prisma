@@ -248,6 +248,45 @@ model DispatchItem {
 }
 
 // ───────────────────────────────────────────────
+//  Transport Vendor (owns vehicles + drivers)
+// ───────────────────────────────────────────────
+
+model TransportVendor {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  phone     String?
+  address   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  vehicles  Vehicle[]
+}
+
+model Vehicle {
+  id               String   @id @default(cuid())
+  vehicleNo        String   @unique  // e.g. "DM TA 12-1212"
+  transportVendorId String
+  driverName       String?
+  driverPhone      String?
+  transportVendor  TransportVendor @relation(fields: [transportVendorId], references: [id])
+  createdAt        DateTime @default(now())
+}
+
+// ───────────────────────────────────────────────
+//  Courier Vendor (3rd party delivery)
+// ───────────────────────────────────────────────
+
+model CourierVendor {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  phone     String?
+  address   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+// ───────────────────────────────────────────────
 //  Audit trail
 // ───────────────────────────────────────────────
 
