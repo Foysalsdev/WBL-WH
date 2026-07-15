@@ -66,16 +66,17 @@ export function DashboardPage() {
       />
 
       {/* Brand banner */}
-      <div className="relative overflow-hidden rounded-xl border bg-gradient-to-r from-primary/10 to-primary/5">
+      <div className="relative overflow-hidden rounded-xl border bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10">
         <div className="flex items-center justify-between gap-4 p-4 md:p-6">
           <div className="flex-1 min-w-0">
-            <img src="/whirlpool-logo.svg" alt="Whirlpool" className="h-8 md:h-10 mb-2" style={{ objectFit: 'contain' }} />
-            <p className="text-sm text-muted-foreground">Official Warehouse Management System for Whirlpool Bangladesh operations.</p>
+            <img src="/whirlpool-logo.svg" alt="Whirlpool" className="h-7 md:h-9 mb-2 dark:hidden" style={{ objectFit: 'contain' }} />
+            <img src="/whirlpool-logo-white.svg" alt="Whirlpool" className="h-7 md:h-9 mb-2 hidden dark:block" style={{ objectFit: 'contain' }} />
+            <p className="text-xs md:text-sm text-muted-foreground">Official Warehouse Management System for Whirlpool Bangladesh operations.</p>
           </div>
           <img
             src="/whirlpool-banner.png"
             alt="Whirlpool Bangladesh"
-            className="h-20 md:h-28 w-auto rounded-lg shrink-0 hidden sm:block"
+            className="h-16 md:h-24 w-auto rounded-lg shrink-0 hidden sm:block"
             style={{ objectFit: 'contain' }}
           />
         </div>
