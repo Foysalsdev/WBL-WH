@@ -5,6 +5,7 @@ import { QueryProvider } from '@/lib/api/query-provider'
 import { AppShell } from '@/components/layout/AppShell'
 import { useUI } from '@/lib/store/ui'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
+import { InventoryPage } from '@/features/inventory/InventoryPage'
 
 export default function Home() {
   const activeModule = useUI((s) => s.activeModule)
@@ -13,8 +14,9 @@ export default function Home() {
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
       <QueryProvider>
         <AppShell>
-          {activeModule === 'dashboard' && <DashboardPage />}
-          {activeModule !== 'dashboard' && <ComingSoon />}
+          {activeModule === 'dashboard'  && <DashboardPage />}
+          {activeModule === 'inventory'  && <InventoryPage />}
+          {(activeModule !== 'dashboard' && activeModule !== 'inventory') && <ComingSoon />}
         </AppShell>
       </QueryProvider>
     </ThemeProvider>
@@ -25,7 +27,6 @@ export default function Home() {
 function ComingSoon() {
   const activeModule = useUI((s) => s.activeModule)
   const labelMap: Record<string, string> = {
-    inventory: 'Inventory',
     masters: 'Catalog & Parties',
     inbound: 'Inbound · GRN',
     outbound: 'Outbound · Dispatch',
@@ -47,13 +48,12 @@ function ComingSoon() {
         This module will be built in the next phase of our phased rollout.
       </p>
       <p className="text-sm text-muted-foreground">
-        Foundation is now in place — design system, app shell, command palette (⌘K),
-        and the dashboard are live. Each remaining module gets its own dedicated build session.
+        Foundation, dashboard, and inventory are live. Each remaining module gets its own dedicated build session.
       </p>
       <div className="mt-6 inline-flex items-center gap-2 rounded-full border bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground">
-        <span className="font-mono">Phase 0 · Foundation</span>
+        <span className="font-mono">Phase 1 · Inventory complete</span>
         <span>·</span>
-        <span>Next up: Phase 1 · {label}</span>
+        <span>Next up: Phase 2 · {label}</span>
       </div>
     </div>
   )

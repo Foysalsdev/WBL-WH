@@ -120,10 +120,39 @@ export const Movement = z.object({
   notes: z.string().nullable().optional(),
   createdAt: z.coerce.date(),
   product: z.object({
-    sku: z.string(), name: z.string(),
+    sku: z.string(), name: z.string(), category: z.string().nullable().optional(),
   }).optional(),
 })
 export type Movement = z.infer<typeof Movement>
+
+// ─── Inventory item (computed view: stock joined with product) ───
+export const InventoryItem = z.object({
+  id: Id,
+  productId: Id,
+  sku: Code,
+  name: z.string(),
+  category: z.string().nullable().optional(),
+  unit: z.string(),
+  costPrice: z.number(),
+  salePrice: z.number(),
+  quantity: z.number().int(),
+  reserved: z.number().int(),
+  damaged: z.number().int(),
+  available: z.number().int(),
+  reorderLevel: z.number().int(),
+  value: z.number(),
+  isLow: z.boolean(),
+})
+export type InventoryItem = z.infer<typeof InventoryItem>
+
+export const StockAdjustmentInput = z.object({
+  productId: Id,
+  type: z.union([MovementType, z.string()]).optional(),
+  quantity: z.number().int().refine((n) => n !== 0, 'Must be non-zero'),
+  reference: z.string().optional(),
+  notes: z.string().optional(),
+})
+export type StockAdjustmentInput = z.infer<typeof StockAdjustmentInput>
 
 // ─── Purchase Order (Inbound) ────────────────────────────────────
 export const POStatus = z.enum(['draft', 'ordered', 'partial', 'received', 'cancelled'])
