@@ -5,10 +5,10 @@
 const BDT = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 })
 const NUM = new Intl.NumberFormat('en-IN')
 
-/** ৳-prefixed currency string */
+/** TK-prefixed currency string (Bangladeshi Taka) */
 export function bdt(n: number): string {
-  if (!isFinite(n)) return '৳0'
-  return '৳' + BDT.format(n)
+  if (!isFinite(n)) return 'TK 0'
+  return 'TK ' + BDT.format(n)
 }
 
 /** Plain number with thousand separators */

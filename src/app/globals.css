@@ -242,6 +242,9 @@
   .animate-slide-in-right {
     animation: slide-in-right var(--duration-base) var(--ease-out);
   }
+  .animate-scale-in {
+    animation: scale-in var(--duration-fast) var(--ease-out);
+  }
 
   @keyframes fade-in {
     from { opacity: 0; }
@@ -255,6 +258,10 @@
     from { opacity: 0; transform: translateX(8px); }
     to { opacity: 1; transform: translateX(0); }
   }
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
 
   /* Number tabular alignment for tables & KPIs */
   .tabular-nums { font-variant-numeric: tabular-nums; }
@@ -264,4 +271,58 @@
     backdrop-filter: saturate(180%) blur(12px);
     -webkit-backdrop-filter: saturate(180%) blur(12px);
   }
+
+  /* Premium card with subtle top accent — gives the surface depth */
+  .card-premium {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--duration-base) var(--ease-out),
+                transform var(--duration-base) var(--ease-out);
+  }
+  .card-premium:hover {
+    box-shadow: var(--shadow-md);
+  }
+  .card-premium::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--whp-blue), var(--whp-gold));
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    opacity: 0;
+    transition: opacity var(--duration-base) var(--ease-out);
+  }
+  .card-premium:hover::before {
+    opacity: 1;
+  }
+
+  /* Clickable code in tables — looks like a link, not a button */
+  .code-link {
+    color: var(--primary);
+    font-family: var(--font-geist-mono), monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color var(--duration-fast) var(--ease-out);
+    border-bottom: 1px dashed transparent;
+  }
+  .code-link:hover {
+    border-bottom-color: var(--primary);
+  }
+
+  /* Stagger fade-in for list items */
+  .stagger > * {
+    animation: slide-up var(--duration-base) var(--ease-out) both;
+  }
+  .stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger > *:nth-child(2) { animation-delay: 40ms; }
+  .stagger > *:nth-child(3) { animation-delay: 80ms; }
+  .stagger > *:nth-child(4) { animation-delay: 120ms; }
+  .stagger > *:nth-child(5) { animation-delay: 160ms; }
+  .stagger > *:nth-child(6) { animation-delay: 200ms; }
+  .stagger > *:nth-child(7) { animation-delay: 240ms; }
+  .stagger > *:nth-child(8) { animation-delay: 280ms; }
 }

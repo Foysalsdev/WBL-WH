@@ -9,7 +9,8 @@ import { cn } from '@/lib/utils'
 
 // ═══════════════════════════════════════════════════════════════
 //  DataTable — sortable, scrollable table with sticky header
-//  Replaces the repeated sort-state + table markup pattern.
+//  Premium polish: hover state lifts row, alternating zebra,
+//  smooth animations on sort change.
 // ═══════════════════════════════════════════════════════════════
 
 export interface Column<T> {
@@ -23,6 +24,10 @@ export interface Column<T> {
   defaultDir?: 'asc' | 'desc'
   align?: 'left' | 'right' | 'center'
   className?: string
+  /** Width hint — e.g. "w-32" */
+  width?: string
+  /** Don't pad horizontal — useful for action columns */
+  noPadding?: boolean
 }
 
 interface DataTableProps<T> {
@@ -34,8 +39,6 @@ interface DataTableProps<T> {
   onRowClick?: (row: T) => void
   /** Max height in px (default 600) */
   maxHeight?: number
-  /** Show hover effect on rows (default: true) */
-  hover?: boolean
   /** Initial sort column key */
   initialSortKey?: string
   initialSortDir?: 'asc' | 'desc'
@@ -45,7 +48,7 @@ interface DataTableProps<T> {
 
 export function DataTable<T>({
   data, columns, rowKey, onRowClick,
-  maxHeight = 600, hover = true,
+  maxHeight = 600,
   initialSortKey, initialSortDir = 'asc',
   emptyState,
 }: DataTableProps<T>) {
@@ -79,11 +82,11 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="rounded-lg border overflow-hidden">
+    <div className="rounded-lg border overflow-hidden bg-card">
       <div style={{ maxHeight }} className="overflow-auto">
         <Table>
-          <TableHeader className="sticky top-0 bg-card z-10">
-            <TableRow>
+          <TableHeader className="sticky top-0 bg-muted/40 backdrop-blur z-10 border-b">
+            <TableRow className="hover:bg-transparent">
               {columns.map((col) => {
                 const isSortable = !!col.sort
                 const isActive = sortKey === col.key
@@ -91,8 +94,10 @@ export function DataTable<T>({
                   <TableHead
                     key={col.key}
                     className={cn(
+                      'h-11 text-xs font-semibold uppercase tracking-wide text-muted-foreground',
                       col.align === 'right' && 'text-right',
                       col.align === 'center' && 'text-center',
+                      col.width,
                       col.className,
                     )}
                   >
@@ -100,7 +105,7 @@ export function DataTable<T>({
                       <button
                         onClick={() => toggleSort(col.key)}
                         className={cn(
-                          'inline-flex items-center gap-1 hover:text-foreground transition-colors',
+                          'inline-flex items-center gap-1 transition-colors hover:text-foreground',
                           col.align === 'right' && 'flex-row-reverse',
                           isActive && 'text-foreground',
                         )}
@@ -109,7 +114,7 @@ export function DataTable<T>({
                         {isActive ? (
                           sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                         ) : (
-                          <ArrowUpDown className="h-3 w-3 opacity-40" />
+                          <ArrowUpDown className="h-3 w-3 opacity-30" />
                         )}
                       </button>
                     ) : (
@@ -121,18 +126,27 @@ export function DataTable<T>({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sorted.map((row) => (
+            {sorted.map((row, idx) => (
               <TableRow
                 key={rowKey(row)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
-                className={cn(hover && 'hover:bg-muted/40', onRowClick && 'cursor-pointer')}
+                className={cn(
+                  'group transition-colors',
+                  // Subtle zebra stripe — only on even rows
+                  idx % 2 === 1 && 'bg-muted/20',
+                  // Hover state
+                  'hover:bg-primary/5',
+                  onRowClick && 'cursor-pointer',
+                )}
               >
                 {columns.map((col) => (
                   <TableCell
                     key={col.key}
                     className={cn(
+                      'py-3',
                       col.align === 'right' && 'text-right',
                       col.align === 'center' && 'text-center',
+                      !col.noPadding && 'px-4',
                       col.className,
                     )}
                   >
@@ -145,5 +159,17 @@ export function DataTable<T>({
         </Table>
       </div>
     </div>
+  )
+}
+
+// ─── Helper cell renderers ───────────────────────────────────────
+
+/** Clickable code cell — looks like a link, opens detail view */
+export function CodeCell({ code, onClick }: { code: string; onClick?: () => void }) {
+  if (!onClick) return <span className="font-mono text-xs">{code}</span>
+  return (
+    <button className="code-link" onClick={(e) => { e.stopPropagation(); onClick() }}>
+      {code}
+    </button>
   )
 }

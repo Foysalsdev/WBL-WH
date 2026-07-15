@@ -2,14 +2,20 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Building2, Plus } from 'lucide-react'
+import { Building2, Plus, Printer, Trash2, MapPin, Boxes } from 'lucide-react'
 import { StatCard } from '@/components/system'
 import { MasterTabShell } from '@/components/system/master-tab-shell'
 import { CreateDialog } from '@/components/system/create-dialog'
+import { ViewDialog, type ViewField } from '@/components/system/view-dialog'
+import { RowActions } from '@/components/system/row-actions'
 import { Field } from '@/components/system/forms'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
+} from '@/components/ui/alert-dialog'
 import { warehousesApi } from '@/lib/api/endpoints'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { inputClass } from '@/lib/styles'
@@ -18,7 +24,7 @@ import { num } from '@/lib/format'
 import type { Warehouse, WarehouseInput } from '@/domain/schemas'
 
 // ═══════════════════════════════════════════════════════════════
-//  WarehousesTab — card grid of warehouses with location counts
+//  WarehousesTab — premium card grid of warehouses with click-to-view
 // ═══════════════════════════════════════════════════════════════
 
 const EMPTY_FORM: WarehouseInput = {
@@ -27,7 +33,9 @@ const EMPTY_FORM: WarehouseInput = {
 
 export function WarehousesTab() {
   const [search, setSearch] = useState('')
-  const [open, setOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [viewItem, setViewItem] = useState<Warehouse | null>(null)
+  const [deleteItem, setDeleteItem] = useState<Warehouse | null>(null)
   const [form, setForm] = useState<WarehouseInput>(EMPTY_FORM)
   const debouncedSearch = useDebounce(search, 250)
   const qc = useQueryClient()
@@ -57,7 +65,12 @@ export function WarehousesTab() {
     setForm((f) => ({ ...f, [key]: value }))
   }
 
-  async function submit() {
+  function openCreate() {
+    setForm(EMPTY_FORM)
+    setCreateOpen(true)
+  }
+
+  async function submitCreate() {
     if (!form.code || !form.name) {
       toast.error('Code and name are required')
       return
@@ -65,11 +78,33 @@ export function WarehousesTab() {
     try {
       const w = await createMutation.mutateAsync(form)
       toast.success('Warehouse created', { description: `${w.code} · ${w.name}` })
-      setOpen(false)
-      setForm(EMPTY_FORM)
+      setCreateOpen(false)
     } catch (e: any) {
       toast.error('Failed to create warehouse', { description: e.message })
     }
+  }
+
+  function handlePrint(w: Warehouse) {
+    toast.info('Print preview', { description: `Generating PDF for ${w.code}…` })
+  }
+
+  function handleDelete() {
+    if (!deleteItem) return
+    toast.info('Delete coming soon', {
+      description: `Delete for ${deleteItem.code} will be wired in Phase 7.`,
+    })
+    setDeleteItem(null)
+  }
+
+  function viewFields(w: Warehouse): ViewField[] {
+    return [
+      { label: 'Code', value: w.code, mono: true },
+      { label: 'Name', value: w.name },
+      { label: 'Address', value: w.address || '—', full: true },
+      { label: 'City', value: w.city || '—' },
+      { label: 'Capacity', value: `${num(w.capacity)} units`, mono: true },
+      { label: 'Locations', value: num(w.locations?.length || 0), mono: true },
+    ]
   }
 
   const totalLocations = (data || []).reduce((s, w) => s + (w.locations?.length || 0), 0)
@@ -77,10 +112,10 @@ export function WarehousesTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
-        <StatCard label="Warehouses" value={num(data?.length || 0)} icon={Building2} />
-        <StatCard label="Total Locations" value={num(totalLocations)} tone="info" />
-        <StatCard label="Total Capacity" value={`${num(totalCapacity)} units`} tone="success" />
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 stagger">
+        <StatCard label="Warehouses" value={num(data?.length || 0)} icon={Building2} tone="primary" />
+        <StatCard label="Total Locations" value={num(totalLocations)} tone="info" icon={MapPin} />
+        <StatCard label="Total Capacity" value={`${num(totalCapacity)} units`} tone="success" icon={Boxes} />
       </div>
 
       <MasterTabShell<Warehouse>
@@ -95,25 +130,32 @@ export function WarehousesTab() {
         emptyDescription="Add your first warehouse to start tracking stock locations."
         emptyIcon={Building2}
         onRetry={() => refetch()}
-        primaryAction={{ label: 'New warehouse', icon: Plus, onClick: () => setOpen(true) }}
+        primaryAction={{ label: 'New warehouse', icon: Plus, onClick: openCreate }}
       >
         {isLoading ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 stagger">
             {filtered.map((w) => (
-              <Card key={w.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-5">
+              <Card
+                key={w.id}
+                className="card-premium cursor-pointer group"
+                onClick={() => setViewItem(w)}
+              >
+                <CardContent className="p-5 relative">
                   <div className="flex items-start justify-between mb-3">
-                    <div className="grid place-items-center h-11 w-11 rounded-lg bg-primary/10 text-primary">
+                    <div className="grid place-items-center h-11 w-11 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 text-primary border border-primary/10 transition-transform group-hover:scale-110">
                       <Building2 className="h-5 w-5" />
                     </div>
                     <Badge variant="outline" className="font-mono">{w.code}</Badge>
                   </div>
                   <p className="font-semibold text-base">{w.name}</p>
-                  <p className="text-sm text-muted-foreground mt-0.5">{w.address || '—'}, {w.city || '—'}</p>
+                  <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1">
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    {w.address || '—'}, {w.city || '—'}
+                  </p>
                   <div className="mt-4 pt-4 border-t grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <p className="text-xs text-muted-foreground">Locations</p>
@@ -124,6 +166,15 @@ export function WarehousesTab() {
                       <p className="font-medium tabular-nums">{num(w.capacity)} units</p>
                     </div>
                   </div>
+
+                  {/* Row actions overlay (top-right) */}
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                    <RowActions
+                      onView={() => setViewItem(w)}
+                      onPrint={() => handlePrint(w)}
+                      onDelete={() => setDeleteItem(w)}
+                    />
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -132,11 +183,11 @@ export function WarehousesTab() {
       </MasterTabShell>
 
       <CreateDialog
-        open={open}
-        onOpenChange={setOpen}
+        open={createOpen}
+        onOpenChange={setCreateOpen}
         title="New Warehouse"
         description="Add a new storage facility."
-        onSubmit={submit}
+        onSubmit={submitCreate}
         submitLabel={createMutation.isPending ? 'Creating…' : 'Create'}
         disabled={createMutation.isPending}
       >
@@ -160,6 +211,58 @@ export function WarehousesTab() {
           </Field>
         </div>
       </CreateDialog>
+
+      <ViewDialog
+        open={viewItem !== null}
+        onOpenChange={(o) => !o && setViewItem(null)}
+        code={viewItem?.code}
+        title={viewItem?.name || ''}
+        subtitle={viewItem ? `${viewItem.address || '—'}, ${viewItem.city || '—'}` : ''}
+        badge={viewItem ? { label: 'Active', tone: 'success' } : undefined}
+        fields={viewItem ? viewFields(viewItem) : []}
+        onEdit={() => { toast.info('Edit coming soon'); setViewItem(null) }}
+        onPrint={() => viewItem && handlePrint(viewItem)}
+        footer={
+          viewItem && viewItem.locations && viewItem.locations.length > 0 ? (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Storage Locations</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {viewItem.locations.slice(0, 12).map((loc) => (
+                  <div key={loc.id} className="rounded-md border bg-muted/40 px-2 py-1.5 text-xs font-mono">
+                    {loc.zone}-{loc.rack}-{loc.bin}
+                  </div>
+                ))}
+                {viewItem.locations.length > 12 && (
+                  <div className="rounded-md border border-dashed bg-muted/20 px-2 py-1.5 text-xs text-muted-foreground">
+                    +{viewItem.locations.length - 12} more
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : undefined
+        }
+      />
+
+      <AlertDialog open={deleteItem !== null} onOpenChange={(o) => !o && setDeleteItem(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete warehouse?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete <span className="font-mono font-semibold">{deleteItem?.code}</span> — {deleteItem?.name}.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              <Trash2 className="h-4 w-4 mr-1.5" />Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
