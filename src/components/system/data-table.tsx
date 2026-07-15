@@ -83,8 +83,8 @@ export function DataTable<T>({
 
   return (
     <div className="rounded-lg border overflow-hidden bg-card">
-      <div style={{ maxHeight }} className="overflow-auto">
-        <Table>
+      <div style={{ maxHeight }} className="overflow-auto overscroll-contain -webkit-overflow-scrolling-touch">
+        <Table className="min-w-[640px] md:min-w-0">
           <TableHeader className="sticky top-0 bg-muted/40 backdrop-blur z-10 border-b">
             <TableRow className="hover:bg-transparent">
               {columns.map((col) => {

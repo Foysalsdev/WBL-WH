@@ -61,33 +61,34 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/80 glass px-4 md:px-6">
+    <header className="sticky top-0 z-30 flex h-14 md:h-16 items-center gap-2 md:gap-3 border-b bg-background/80 glass px-2 md:px-6 shrink-0">
       {/* Mobile menu */}
       <Button
-        variant="ghost" size="icon" className="md:hidden"
+        variant="ghost" size="icon" className="md:hidden shrink-0"
         onClick={onOpenMobileSidebar} aria-label="Open menu"
       >
         <Menu className="h-5 w-5" />
       </Button>
 
-      {/* Search trigger */}
+      {/* Search trigger — compact on mobile */}
       <button
         onClick={() => setCommandOpen(true)}
-        className="group flex items-center gap-3 h-10 w-full max-w-md rounded-lg bg-muted/60 px-3 text-sm text-muted-foreground hover:bg-muted transition-colors"
+        className="group flex items-center gap-2 md:gap-3 h-9 md:h-10 flex-1 md:flex-none md:w-full md:max-w-md rounded-lg bg-muted/60 px-2 md:px-3 text-sm text-muted-foreground hover:bg-muted transition-colors"
       >
-        <Search className="h-4 w-4" />
-        <span className="flex-1 text-left">
+        <Search className="h-4 w-4 shrink-0" />
+        <span className="flex-1 text-left truncate hidden sm:inline">
           Search SKUs, orders, dealers…
         </span>
-        <kbd className="hidden sm:inline-flex items-center gap-1 rounded border bg-background px-1.5 py-0.5 text-[10px] font-mono">
+        <span className="flex-1 text-left sm:hidden">Search…</span>
+        <kbd className="hidden md:inline-flex items-center gap-1 rounded border bg-background px-1.5 py-0.5 text-[10px] font-mono shrink-0">
           ⌘K
         </kbd>
       </button>
 
-      <div className="flex-1" />
+      <div className="flex-1 hidden md:block" />
 
       {/* Actions */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1 md:gap-1.5 shrink-0">
         <Button
           variant="ghost" size="sm" className="hidden lg:inline-flex gap-2 text-muted-foreground"
           onClick={reseed} disabled={reseeding}
@@ -99,24 +100,25 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
 
         <Button
           variant="ghost" size="icon" aria-label="Notifications"
-          className="relative"
+          className="relative h-9 w-9"
           onClick={() => setNotificationsOpen(true)}
         >
-          <Bell className="h-5 w-5" />
+          <Bell className="h-4 md:h-5 w-4 md:w-5" />
           <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-accent" />
         </Button>
 
         <Button
           variant="ghost" size="icon" aria-label="Toggle theme"
+          className="h-9 w-9"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         >
-          {mounted && theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          {mounted && theme === 'dark' ? <Sun className="h-4 md:h-5 w-4 md:w-5" /> : <Moon className="h-4 md:h-5 w-4 md:w-5" />}
         </Button>
 
-        <Separator orientation="vertical" className="mx-1 h-7" />
+        <Separator orientation="vertical" className="mx-1 h-7 hidden sm:block" />
 
-        <div className="flex items-center gap-2 pl-1">
-          <Avatar className="h-9 w-9 border">
+        <div className="flex items-center gap-2 pl-0 sm:pl-1">
+          <Avatar className="h-8 md:h-9 w-8 md:w-9 border shrink-0">
             <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-xs">
               {user ? initials(user.name) : '?'}
             </AvatarFallback>

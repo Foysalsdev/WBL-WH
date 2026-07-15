@@ -19,22 +19,22 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, icon: Icon, actions, breadcrumb }: PageHeaderProps) {
   return (
-    <div className="mb-6 animate-slide-up">
+    <div className="mb-4 md:mb-6 animate-slide-up">
       {breadcrumb && (
-        <nav className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <nav className="mb-2 hidden md:flex items-center gap-1.5 text-xs text-muted-foreground overflow-hidden">
           {breadcrumb}
         </nav>
       )}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3.5 min-w-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 md:gap-4">
+        <div className="flex items-center gap-3 min-w-0">
           {Icon && (
-            <div className="relative grid place-items-center h-12 w-12 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 text-primary shrink-0 border border-primary/10">
-              <Icon className="h-5 w-5" />
+            <div className="relative grid place-items-center h-10 w-10 md:h-12 md:w-12 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 text-primary shrink-0 border border-primary/10">
+              <Icon className="h-4 md:h-5 w-4 md:w-5" />
             </div>
           )}
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight truncate leading-tight">{title}</h1>
-            {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
+            <h1 className="text-lg md:text-2xl font-semibold tracking-tight truncate leading-tight">{title}</h1>
+            {description && <p className="text-xs md:text-sm text-muted-foreground mt-0.5 md:mt-1 line-clamp-2">{description}</p>}
           </div>
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2 shrink-0">{actions}</div>}
@@ -70,7 +70,7 @@ interface StatCardProps {
 
 export function StatCard({ label, value, hint, icon: Icon, tone = 'default', trend }: StatCardProps) {
   return (
-    <div className="group relative overflow-hidden rounded-xl border bg-card p-5 transition-all hover:shadow-md hover:-translate-y-0.5">
+    <div className="group relative overflow-hidden rounded-xl border bg-card p-3 md:p-5 transition-all hover:shadow-md hover:-translate-y-0.5">
       {/* Subtle tone-colored glow in top-right */}
       <div className={cn(
         'absolute -top-6 -right-6 h-20 w-20 rounded-full blur-2xl opacity-40 transition-opacity group-hover:opacity-70',
@@ -81,17 +81,17 @@ export function StatCard({ label, value, hint, icon: Icon, tone = 'default', tre
         tone === 'primary' && 'bg-primary',
         tone === 'default' && 'bg-muted-foreground',
       )} />
-      <div className="relative flex items-start justify-between mb-3">
-        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+      <div className="relative flex items-start justify-between mb-2 md:mb-3">
+        <p className="text-xs md:text-sm font-medium text-muted-foreground truncate">{label}</p>
         {Icon && (
-          <div className={cn('grid place-items-center h-9 w-9 rounded-lg transition-transform group-hover:scale-110', TONE_STYLES[tone])}>
-            <Icon className="h-4 w-4" />
+          <div className={cn('grid place-items-center h-7 w-7 md:h-9 md:w-9 rounded-lg transition-transform group-hover:scale-110 shrink-0', TONE_STYLES[tone])}>
+            <Icon className="h-3.5 md:h-4 w-3.5 md:w-4" />
           </div>
         )}
       </div>
-      <p className="relative text-2xl font-semibold tracking-tight tabular-nums">{value}</p>
-      <div className="relative flex items-center gap-2 mt-1.5">
-        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      <p className="relative text-lg md:text-2xl font-semibold tracking-tight tabular-nums">{value}</p>
+      <div className="relative flex items-center gap-2 mt-1 md:mt-1.5">
+        {hint && <p className="text-[10px] md:text-xs text-muted-foreground truncate">{hint}</p>}
         {trend && (
           <span className={cn(
             'text-xs font-medium tabular-nums',

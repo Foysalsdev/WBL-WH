@@ -136,7 +136,7 @@ function ValuationReport() {
       ) : (
         <>
           <div className="rounded-xl border bg-card p-6">
-            <ResponsiveContainer width="100%" height={320}>
+            <ResponsiveContainer width="100%" height={250} className="w-full">
               <BarChart data={rows} margin={{ left: -10, right: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="category" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} />

@@ -91,7 +91,7 @@ export function DashboardPage() {
             <CardDescription>Inbound vs outbound flow across all warehouses</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height={250} className="w-full">
               <AreaChart data={charts.trend} margin={{ left: -16, right: 8, top: 8 }}>
                 <defs>
                   <linearGradient id="gIn" x1="0" y1="0" x2="0" y2="1">
@@ -121,7 +121,7 @@ export function DashboardPage() {
             <CardDescription>Cost-basis distribution</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height={250} className="w-full">
               <PieChart>
                 <Pie data={charts.byCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={2}>
                   {charts.byCategory.map((_: any, i: number) => (

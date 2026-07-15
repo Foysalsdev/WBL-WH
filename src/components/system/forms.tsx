@@ -29,19 +29,19 @@ export function SearchToolbar({
   onRefresh, isRefreshing, filters, actions,
 }: SearchToolbarProps) {
   return (
-    <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between mb-4">
-      <div className="relative flex-1 max-w-md">
+    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center justify-between mb-3 md:mb-4">
+      <div className="relative flex-1 sm:max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder={searchPlaceholder}
-          className="pl-9"
+          className="pl-9 h-9"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
         />
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         {filters}
-        <Button variant="outline" size="icon" onClick={onRefresh} title="Refresh" aria-label="Refresh">
+        <Button variant="outline" size="icon" className="h-9 w-9" onClick={onRefresh} title="Refresh" aria-label="Refresh">
           <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
         </Button>
         {actions}
