@@ -6,6 +6,9 @@ import { AppShell } from '@/components/layout/AppShell'
 import { useUI } from '@/lib/store/ui'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { InventoryPage } from '@/features/inventory/InventoryPage'
+import { CatalogPage } from '@/features/catalog/CatalogPage'
+
+const ENABLED_MODULES = new Set(['dashboard', 'inventory', 'masters'])
 
 export default function Home() {
   const activeModule = useUI((s) => s.activeModule)
@@ -16,7 +19,8 @@ export default function Home() {
         <AppShell>
           {activeModule === 'dashboard'  && <DashboardPage />}
           {activeModule === 'inventory'  && <InventoryPage />}
-          {(activeModule !== 'dashboard' && activeModule !== 'inventory') && <ComingSoon />}
+          {activeModule === 'masters'    && <CatalogPage />}
+          {!ENABLED_MODULES.has(activeModule) && <ComingSoon />}
         </AppShell>
       </QueryProvider>
     </ThemeProvider>
@@ -27,7 +31,6 @@ export default function Home() {
 function ComingSoon() {
   const activeModule = useUI((s) => s.activeModule)
   const labelMap: Record<string, string> = {
-    masters: 'Catalog & Parties',
     inbound: 'Inbound · GRN',
     outbound: 'Outbound · Dispatch',
     reports: 'Reports',
@@ -48,12 +51,12 @@ function ComingSoon() {
         This module will be built in the next phase of our phased rollout.
       </p>
       <p className="text-sm text-muted-foreground">
-        Foundation, dashboard, and inventory are live. Each remaining module gets its own dedicated build session.
+        Foundation, dashboard, inventory, and catalog are live. Each remaining module gets its own dedicated build session.
       </p>
       <div className="mt-6 inline-flex items-center gap-2 rounded-full border bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground">
-        <span className="font-mono">Phase 1 · Inventory complete</span>
+        <span className="font-mono">Phase 2 · Catalog complete</span>
         <span>·</span>
-        <span>Next up: Phase 2 · {label}</span>
+        <span>Next up: Phase 3 · {label}</span>
       </div>
     </div>
   )
