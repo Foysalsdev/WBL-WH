@@ -163,24 +163,30 @@ model SalesOrder {
   id              String   @id @default(cuid())
   soNumber        String   @unique
   customerId      String
-  status          String   @default("draft") // draft | confirmed | picked | packed | shipped | delivered | cancelled
+  // Workflow: draft → confirmed → picked → scanned → invoiced → dispatched → delivered | cancelled
+  status          String   @default("draft")
   totalAmount     Float    @default(0)
   orderDate       DateTime @default(now())
   deliveryDate    DateTime?
   notes           String?
-  // Pick / pack
+  // Step 1: Pick
   pickedBy        String?
   pickedAt        DateTime?
-  packedBy        String?
-  packedAt        DateTime?
+  // Step 2: Scan (barcode verification)
+  scannedBy       String?
+  scannedAt       DateTime?
+  // Step 3: Invoice
+  invoiceNo       String?
+  invoiceDate     DateTime?
+  invoicedBy      String?
   cartonCount     Int      @default(0)
-  // Dispatch
+  // Step 4: Dispatch
   challanNo       String?
   vehicleNo       String?
   driverName      String?
   driverPhone     String?
-  shippedAt       DateTime?
-  // Delivery confirmation (POD)
+  dispatchedAt    DateTime?
+  // Step 5: POD (proof of delivery)
   podStatus       String?  // pending | confirmed | failed | rescheduled
   podReceivedBy   String?
   podDate         DateTime?
@@ -190,14 +196,15 @@ model SalesOrder {
 }
 
 model SalesOrderItem {
-  id         String  @id @default(cuid())
-  soId       String
-  productId  String
-  quantity   Int     // ordered
-  pickedQty  Int     @default(0) // picked from shelf
-  unitPrice  Float
-  so         SalesOrder @relation(fields: [soId], references: [id], onDelete: Cascade)
-  product    Product  @relation(fields: [productId], references: [id])
+  id          String  @id @default(cuid())
+  soId        String
+  productId   String
+  quantity    Int     // ordered
+  pickedQty   Int     @default(0) // picked from shelf
+  scannedQty  Int     @default(0) // barcode-verified
+  unitPrice   Float
+  so          SalesOrder @relation(fields: [soId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id])
 }
 
 // ───────────────────────────────────────────────

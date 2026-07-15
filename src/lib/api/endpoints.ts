@@ -12,6 +12,7 @@ import {
   Movement as MovementSchema, type Movement,
   InventoryItem as InventoryItemSchema, type InventoryItem, type StockAdjustmentInput,
   PurchaseOrder as PurchaseOrderSchema, type PurchaseOrder,
+  SalesOrder as SalesOrderSchema, type SalesOrder,
   AuditLog as AuditLogSchema, type AuditLog,
 } from '@/domain/schemas'
 import type { ZodTypeAny } from 'zod'
@@ -126,6 +127,22 @@ export const purchaseOrdersApi = {
     .then((p) => safeParse<PurchaseOrder>(PurchaseOrderSchema, p, 'purchase-order')),
   patch: (id: string, body: { action: 'status' | 'receive'; [k: string]: unknown }) =>
     api.patch<{ ok?: boolean; status?: string; grnNumber?: string; error?: string }>(`/api/purchase-orders`, { id, ...body }),
+}
+
+// ─── Sales Orders (Outbound) ─────────────────────────────────────
+export const salesOrdersApi = {
+  list: () => api.get<unknown[]>('/api/sales-orders')
+    .then((arr) => arr.map((s) => safeParse<SalesOrder>(SalesOrderSchema, s, 'sales-order'))),
+  create: (input: {
+    customerId: string
+    orderDate?: string
+    deliveryDate?: string
+    notes?: string
+    items: { productId: string; quantity: number; unitPrice: number }[]
+  }) => api.post<unknown>('/api/sales-orders', input)
+    .then((s) => safeParse<SalesOrder>(SalesOrderSchema, s, 'sales-order')),
+  patch: (id: string, body: { action: string; [k: string]: unknown }) =>
+    api.patch<{ ok?: boolean; status?: string; invoiceNo?: string; challanNo?: string; podStatus?: string; error?: string }>(`/api/sales-orders`, { id, ...body }),
 }
 
 // ─── System ──────────────────────────────────────────────────────

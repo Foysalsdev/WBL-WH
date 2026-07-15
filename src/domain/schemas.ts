@@ -195,7 +195,8 @@ export const PurchaseOrder = z.object({
 export type PurchaseOrder = z.infer<typeof PurchaseOrder>
 
 // ─── Sales Order (Outbound) ──────────────────────────────────────
-export const SOStatus = z.enum(['draft', 'confirmed', 'picked', 'packed', 'shipped', 'delivered', 'cancelled'])
+// Workflow: draft → confirmed → picked → scanned → invoiced → dispatched → delivered | cancelled
+export const SOStatus = z.enum(['draft', 'confirmed', 'picked', 'scanned', 'invoiced', 'dispatched', 'delivered', 'cancelled'])
 export type SOStatus = z.infer<typeof SOStatus>
 
 export const PODStatus = z.enum(['pending', 'confirmed', 'failed', 'rescheduled'])
@@ -206,6 +207,7 @@ export const SalesOrderItem = z.object({
   productId: Id,
   quantity: z.number().int().min(1),
   pickedQty: z.number().int().min(0).default(0),
+  scannedQty: z.number().int().min(0).default(0),
   unitPrice: z.number().min(0),
   product: z.object({
     sku: z.string(), name: z.string(),
@@ -222,16 +224,24 @@ export const SalesOrder = z.object({
   orderDate: z.coerce.date(),
   deliveryDate: z.coerce.date().nullable().optional(),
   notes: z.string().nullable().optional(),
+  // Step 1: Pick
   pickedBy: z.string().nullable().optional(),
   pickedAt: z.coerce.date().nullable().optional(),
-  packedBy: z.string().nullable().optional(),
-  packedAt: z.coerce.date().nullable().optional(),
+  // Step 2: Scan
+  scannedBy: z.string().nullable().optional(),
+  scannedAt: z.coerce.date().nullable().optional(),
+  // Step 3: Invoice
+  invoiceNo: z.string().nullable().optional(),
+  invoiceDate: z.coerce.date().nullable().optional(),
+  invoicedBy: z.string().nullable().optional(),
   cartonCount: z.number().int().default(0),
+  // Step 4: Dispatch
   challanNo: z.string().nullable().optional(),
   vehicleNo: z.string().nullable().optional(),
   driverName: z.string().nullable().optional(),
   driverPhone: z.string().nullable().optional(),
-  shippedAt: z.coerce.date().nullable().optional(),
+  dispatchedAt: z.coerce.date().nullable().optional(),
+  // Step 5: POD
   podStatus: PODStatus.nullable().optional(),
   podReceivedBy: z.string().nullable().optional(),
   podDate: z.coerce.date().nullable().optional(),

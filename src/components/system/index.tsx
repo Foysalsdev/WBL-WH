@@ -143,11 +143,12 @@ const STATUS_STYLES: Record<string, string> = {
   ordered:     'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
   partial:     'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
   received:    'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-  // SO statuses
+  // SO statuses (5-step workflow)
   confirmed:   'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
   picked:      'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20',
-  packed:      'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
-  shipped:     'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  scanned:     'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
+  invoiced:    'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20',
+  dispatched:  'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
   delivered:   'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
   cancelled:   'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
   // POD

@@ -197,7 +197,8 @@ async function main() {
   })
   await db.purchaseOrder.update({ where: { id: po4.id }, data: { totalAmount: 200 * 2800 + 150 * 4500 } })
 
-  // ── Sales Orders (Outbound) with full dispatch detail ─
+  // ── Sales Orders (Outbound) with full 5-step workflow detail ─
+  // SO1: fully delivered (completed all 5 steps)
   const so1 = await db.salesOrder.create({
     data: {
       soNumber: 'SO-2026-00001',
@@ -206,59 +207,69 @@ async function main() {
       orderDate: new Date('2026-06-28'),
       deliveryDate: new Date('2026-07-01'),
       notes: 'Bashundhara City monthly showroom restock',
+      // Step 1: Pick
       pickedBy: grnClerk.name, pickedAt: new Date('2026-06-30'),
-      packedBy: manager.name,  packedAt: new Date('2026-06-30'), cartonCount: 12,
+      // Step 2: Scan
+      scannedBy: grnClerk.name, scannedAt: new Date('2026-06-30'),
+      // Step 3: Invoice
+      invoiceNo: 'INV-2026-00001', invoiceDate: new Date('2026-06-30'), invoicedBy: manager.name, cartonCount: 12,
+      // Step 4: Dispatch
       challanNo: 'CH-2026-001', vehicleNo: 'DHK-GAZ-9921', driverName: 'Karim Uddin', driverPhone: '+8801712000001',
-      shippedAt: new Date('2026-06-30'),
+      dispatchedAt: new Date('2026-06-30'),
+      // Step 5: POD
       podStatus: 'confirmed', podReceivedBy: 'Showroom Manager', podDate: new Date('2026-07-01'), podNotes: 'Delivered in good condition, signed by Mr. Hasan',
       items: {
         create: [
-          { productId: products[0].id, quantity: 5, unitPrice: 94500, pickedQty: 5 },
-          { productId: products[3].id, quantity: 8, unitPrice: 38900, pickedQty: 8 },
+          { productId: products[0].id, quantity: 5, unitPrice: 94500, pickedQty: 5, scannedQty: 5 },
+          { productId: products[3].id, quantity: 8, unitPrice: 38900, pickedQty: 8, scannedQty: 8 },
         ],
       },
     },
   })
   await db.salesOrder.update({ where: { id: so1.id }, data: { totalAmount: 5 * 94500 + 8 * 38900 } })
 
+  // SO2: dispatched, awaiting POD
   const so2 = await db.salesOrder.create({
     data: {
       soNumber: 'SO-2026-00002',
       customerId: customers[2].id, // Transcom Digital
-      status: 'shipped',
+      status: 'dispatched',
       orderDate: new Date('2026-07-08'),
       deliveryDate: new Date('2026-07-12'),
       notes: 'Transcom corporate bulk order',
       pickedBy: grnClerk.name, pickedAt: new Date('2026-07-11'),
-      packedBy: manager.name,   packedAt: new Date('2026-07-11'), cartonCount: 8,
+      scannedBy: grnClerk.name, scannedAt: new Date('2026-07-11'),
+      invoiceNo: 'INV-2026-00002', invoiceDate: new Date('2026-07-11'), invoicedBy: manager.name, cartonCount: 8,
       challanNo: 'CH-2026-002', vehicleNo: 'DHK-MIR-4477', driverName: 'Jewel Ahmed', driverPhone: '+8801712000002',
-      shippedAt: new Date('2026-07-11'),
+      dispatchedAt: new Date('2026-07-11'),
       podStatus: 'pending',
       items: {
         create: [
-          { productId: products[7].id, quantity: 3, unitPrice: 94500, pickedQty: 3 },
-          { productId: products[8].id, quantity: 5, unitPrice: 22500, pickedQty: 5 },
+          { productId: products[7].id, quantity: 3, unitPrice: 94500, pickedQty: 3, scannedQty: 3 },
+          { productId: products[8].id, quantity: 5, unitPrice: 22500, pickedQty: 5, scannedQty: 5 },
         ],
       },
     },
   })
   await db.salesOrder.update({ where: { id: so2.id }, data: { totalAmount: 3 * 94500 + 5 * 22500 } })
 
+  // SO3: invoiced, awaiting dispatch
   const so3 = await db.salesOrder.create({
     data: {
       soNumber: 'SO-2026-00003',
       customerId: customers[4].id, // Chittagong Branch
-      status: 'packed',
+      status: 'invoiced',
       orderDate: new Date('2026-07-13'),
       deliveryDate: new Date('2026-07-16'),
-      notes: 'Chittagong branch transfer — packed, awaiting dispatch',
+      notes: 'Chittagong branch transfer — invoiced, awaiting dispatch',
       pickedBy: grnClerk.name, pickedAt: new Date('2026-07-14'),
-      packedBy: manager.name,   packedAt: new Date('2026-07-14'), cartonCount: 15,
+      scannedBy: grnClerk.name, scannedAt: new Date('2026-07-14'),
+      invoiceNo: 'INV-2026-00003', invoiceDate: new Date('2026-07-14'), invoicedBy: manager.name, cartonCount: 15,
       items: {
         create: [
-          { productId: products[1].id, quantity: 10, unitPrice: 52800, pickedQty: 10 },
-          { productId: products[4].id, quantity: 4,  unitPrice: 71500, pickedQty: 4 },
-          { productId: products[6].id, quantity: 6,  unitPrice: 78500, pickedQty: 6 },
+          { productId: products[1].id, quantity: 10, unitPrice: 52800, pickedQty: 10, scannedQty: 10 },
+          { productId: products[4].id, quantity: 4,  unitPrice: 71500, pickedQty: 4, scannedQty: 4 },
+          { productId: products[6].id, quantity: 6,  unitPrice: 78500, pickedQty: 6, scannedQty: 6 },
         ],
       },
     },
@@ -283,6 +294,7 @@ async function main() {
   })
   await db.salesOrder.update({ where: { id: so4.id }, data: { totalAmount: 2 * 172000 + 3 * 88500 } })
 
+  // SO5: picked, awaiting scan
   const so5 = await db.salesOrder.create({
     data: {
       soNumber: 'SO-2026-00005',
@@ -290,7 +302,7 @@ async function main() {
       status: 'picked',
       orderDate: new Date('2026-07-13'),
       deliveryDate: new Date('2026-07-17'),
-      notes: 'Sylhet dealer order — picked, awaiting pack',
+      notes: 'Sylhet dealer order — picked, awaiting scan',
       pickedBy: grnClerk.name, pickedAt: new Date('2026-07-15'),
       items: {
         create: [
@@ -301,6 +313,27 @@ async function main() {
     },
   })
   await db.salesOrder.update({ where: { id: so5.id }, data: { totalAmount: 15 * 18900 + 30 * 4400 } })
+
+  // SO6: scanned, awaiting invoice
+  const so6 = await db.salesOrder.create({
+    data: {
+      soNumber: 'SO-2026-00006',
+      customerId: customers[3].id, // Star Tech
+      status: 'scanned',
+      orderDate: new Date('2026-07-14'),
+      deliveryDate: new Date('2026-07-18'),
+      notes: 'Star Tech order — scanned, awaiting invoice',
+      pickedBy: grnClerk.name, pickedAt: new Date('2026-07-15'),
+      scannedBy: grnClerk.name, scannedAt: new Date('2026-07-15'),
+      items: {
+        create: [
+          { productId: products[10].id, quantity: 4, unitPrice: 71500, pickedQty: 4, scannedQty: 4 },
+          { productId: products[11].id, quantity: 6, unitPrice: 59500, pickedQty: 6, scannedQty: 6 },
+        ],
+      },
+    },
+  })
+  await db.salesOrder.update({ where: { id: so6.id }, data: { totalAmount: 4 * 71500 + 6 * 59500 } })
 
   // ── Movements (post-opening) ─────────────────────────
   // SO1 deliveries

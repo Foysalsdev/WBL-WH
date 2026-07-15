@@ -33,7 +33,7 @@ export const MODULES: ModuleDef[] = [
   { key: 'inventory', label: 'Inventory',           shortLabel: 'Stock',    description: 'Stock levels, movements & adjustments', icon: Boxes,            phase: 1, enabled: true },
   { key: 'masters',   label: 'Catalog & Parties',   shortLabel: 'Masters',  description: 'Products, dealers, sourcing, warehouses', icon: Database,      phase: 2, enabled: true },
   { key: 'inbound',   label: 'Inbound · GRN',       shortLabel: 'Inbound',  description: 'Purchase orders & goods receipt',     icon: PackageOpen,     phase: 3, enabled: true },
-  { key: 'outbound',  label: 'Outbound · Dispatch', shortLabel: 'Outbound', description: 'Pick, pack, dispatch & POD',          icon: Truck,           phase: 4, enabled: false },
+  { key: 'outbound',  label: 'Outbound · Dispatch', shortLabel: 'Outbound', description: 'Pick, scan, invoice, dispatch & POD', icon: Truck,           phase: 4, enabled: true },
   { key: 'reports',   label: 'Reports',             shortLabel: 'Reports',  description: 'Stock valuation & movement reports',  icon: BarChart3,       phase: 5, enabled: false },
   { key: 'audit',     label: 'Audit Log',           shortLabel: 'Audit',    description: 'Immutable activity trail',            icon: ClipboardList,   phase: 6, enabled: false },
 ]
