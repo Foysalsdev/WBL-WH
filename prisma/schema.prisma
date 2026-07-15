@@ -1,5 +1,8 @@
-// 3i Logistics — ERP + WMS  (better-edition)
-// Next.js 16 + Prisma (SQLite) + shadcn/ui
+// Whirlpool Bangladesh — WMS (better-edition)
+// Next.js 16 + Prisma + shadcn/ui
+// NOTE: Uses SQLite for local dev. For production (Supabase), change
+// provider to "postgresql" and set DATABASE_URL to Supabase connection string.
+// The schema is 100% PostgreSQL-compatible (no SQLite-specific types).
 
 generator client {
   provider = "prisma-client-js"
@@ -15,13 +18,15 @@ datasource db {
 // ───────────────────────────────────────────────
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  role      String   @default("staff") // admin | manager | staff
-  avatar    String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String?
+  role         String   @default("staff") // admin | manager | staff | viewer
+  avatar       String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Customer {
@@ -292,10 +297,36 @@ model CourierVendor {
 
 model AuditLog {
   id        String   @id @default(cuid())
-  action    String   // CREATE | UPDATE | DELETE | POST
+  action    String   // CREATE | UPDATE | DELETE | POST | CONFIRM | ADJUST
   entity    String
   entityId  String?
   userName  String?
   details   String?
   createdAt DateTime @default(now())
+}
+
+// ───────────────────────────────────────────────
+//  RBAC — Role-Based Access Control
+//  Admin creates roles, assigns permissions, sets user roles.
+//  Permissions are module.action pairs (e.g. "inventory.view", "inbound.create")
+// ───────────────────────────────────────────────
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique  // admin | manager | staff | viewer
+  label       String            // display name: "Administrator", "Warehouse Manager"
+  description String?
+  isSystem    Boolean  @default(false) // system roles can't be deleted
+  createdAt   DateTime @default(now())
+  permissions Permission[]
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  roleId      String
+  module      String   // dashboard | inventory | masters | inbound | outbound | reports | audit | users
+  action      String   // view | create | edit | delete | print | post
+  roleId_rel  Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, module, action])
 }

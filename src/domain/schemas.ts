@@ -12,7 +12,7 @@ export const Email = z.string().email().nullable().optional()
 export const Phone = z.string().max(32).nullable().optional()
 
 // ─── User ────────────────────────────────────────────────────────
-export const UserRole = z.enum(['admin', 'manager', 'staff'])
+export const UserRole = z.enum(['admin', 'manager', 'staff', 'viewer'])
 export type UserRole = z.infer<typeof UserRole>
 
 export const User = z.object({
@@ -23,8 +23,29 @@ export const User = z.object({
   avatar: z.string().nullable().optional(),
   active: z.boolean().default(true),
   createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date().optional(),
 })
 export type User = z.infer<typeof User>
+
+// ─── RBAC ────────────────────────────────────────────────────────
+export const Permission = z.object({
+  id: Id,
+  roleId: Id,
+  module: z.string(),
+  action: z.string(),
+})
+export type Permission = z.infer<typeof Permission>
+
+export const Role = z.object({
+  id: Id,
+  name: z.string(),
+  label: z.string(),
+  description: z.string().nullable().optional(),
+  isSystem: z.boolean().default(false),
+  createdAt: z.coerce.date(),
+  permissions: z.array(Permission).optional(),
+})
+export type Role = z.infer<typeof Role>
 
 // ─── Customer (Dealer) ───────────────────────────────────────────
 export const Customer = z.object({

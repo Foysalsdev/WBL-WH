@@ -2,41 +2,105 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { User, UserRole } from '@/domain/schemas'
 
 // ═══════════════════════════════════════════════════════════════
-//  Session store — currently hardcoded admin (Phase 8: NextAuth)
+//  Auth store — login/logout, user session, RBAC permissions
 // ═══════════════════════════════════════════════════════════════
 
-interface SessionState {
-  user: User | null
-  setSession: (user: User) => void
-  clear: () => void
-  /** Check if user has one of the given roles */
-  can: (...roles: UserRole[]) => boolean
+interface AuthUser {
+  id: string
+  email: string
+  name: string
+  role: string
+  avatar: string | null
+  active: boolean
 }
 
-const DEFAULT_USER: User = {
-  id: 'usr_admin',
-  email: 'admin@whirlpool-bd.com',
-  name: 'Foysal Ahmed',
-  role: 'admin',
-  avatar: null,
-  active: true,
-  createdAt: new Date('2026-01-01'),
+interface AuthState {
+  user: AuthUser | null
+  token: string | null
+  permissions: string[]
+  isAuthenticated: boolean
+  isLoading: boolean
+
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>
+  logout: () => void
+  hasPermission: (module: string, action: string) => boolean
+  hasAnyPermission: (module: string) => boolean
+  setPermissions: (perms: string[]) => void
 }
 
-export const useSession = create<SessionState>()(
+export const useAuth = create<AuthState>()(
   persist(
     (set, get) => ({
-      user: DEFAULT_USER,
-      setSession: (user) => set({ user }),
-      clear: () => set({ user: null }),
-      can: (...roles) => {
-        const u = get().user
-        return !!u && roles.includes(u.role)
+      user: null,
+      token: null,
+      permissions: [],
+      isAuthenticated: false,
+      isLoading: false,
+
+      login: async (email, password) => {
+        set({ isLoading: true })
+        try {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+          })
+          const data = await res.json()
+
+          if (!res.ok) {
+            return { ok: false, error: data.error || 'Login failed' }
+          }
+
+          set({
+            user: data.user,
+            token: data.token,
+            permissions: data.permissions || [],
+            isAuthenticated: true,
+            isLoading: false,
+          })
+          return { ok: true }
+        } catch (e: any) {
+          set({ isLoading: false })
+          return { ok: false, error: e.message }
+        }
       },
+
+      logout: () => {
+        set({
+          user: null,
+          token: null,
+          permissions: [],
+          isAuthenticated: false,
+        })
+      },
+
+      hasPermission: (module, action) => {
+        const { permissions, user } = get()
+        if (!user) return false
+        // Admin has all permissions
+        if (user.role === 'admin') return true
+        return permissions.includes(`${module}.${action}`)
+      },
+
+      hasAnyPermission: (module) => {
+        const { permissions, user } = get()
+        if (!user) return false
+        if (user.role === 'admin') return true
+        return permissions.some(p => p.startsWith(`${module}.`))
+      },
+
+      setPermissions: (perms) => set({ permissions: perms }),
     }),
-    { name: 'whp-session' },
+    {
+      name: 'whp-auth',
+      partialize: (s) => ({
+        user: s.user,
+        token: s.token,
+        permissions: s.permissions,
+        isAuthenticated: s.isAuthenticated,
+      }),
+    },
   ),
 )

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Search, Bell, Sun, Moon, Menu, RefreshCw } from 'lucide-react'
+import { Search, Bell, Sun, Moon, Menu, RefreshCw, LogOut } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { useUI } from '@/lib/store/ui'
-import { useSession } from '@/lib/auth/session'
+import { useAuth } from '@/lib/auth/session'
 import { initials } from '@/lib/format'
 import { systemApi } from '@/lib/api/endpoints'
 import { toast } from 'sonner'
@@ -25,7 +25,7 @@ interface TopbarProps {
 export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
   const { theme, setTheme } = useTheme()
   const { setCommandOpen, setNotificationsOpen } = useUI()
-  const user = useSession((s) => s.user)
+  const user = useAuth((s) => s.user)
   const [mounted, setMounted] = useState(false)
   const [reseeding, setReseeding] = useState(false)
 
@@ -128,6 +128,21 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
             <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
           </div>
         </div>
+
+        {/* Logout */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-muted-foreground hover:text-destructive"
+          onClick={() => {
+            useAuth.getState().logout()
+            window.location.reload()
+          }}
+          aria-label="Logout"
+          title="Logout"
+        >
+          <LogOut className="h-4 md:h-5 w-4 md:w-5" />
+        </Button>
       </div>
     </header>
   )

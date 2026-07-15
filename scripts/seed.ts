@@ -1,24 +1,82 @@
 // Seed script — Whirlpool Bangladesh Warehouse Operations
 import { db } from '../src/lib/db'
 
+// ─── RBAC: Role & Permission definitions ─────────────────────────
+const MODULES = ['dashboard', 'inventory', 'masters', 'inbound', 'outbound', 'reports', 'audit', 'users']
+const ACTIONS = ['view', 'create', 'edit', 'delete', 'print', 'post']
+
+// Define which actions each role gets per module
+const ROLE_PERMISSIONS: Record<string, Record<string, string[]>> = {
+  admin: Object.fromEntries(MODULES.map(m => [m, [...ACTIONS]])), // admin = all
+  manager: {
+    dashboard: ['view'],
+    inventory: ['view', 'edit', 'print'],
+    masters: ['view', 'create', 'edit', 'delete', 'print'],
+    inbound: ['view', 'create', 'edit', 'post', 'print'],
+    outbound: ['view', 'create', 'edit', 'post', 'print'],
+    reports: ['view', 'print'],
+    audit: ['view'],
+    users: ['view'],
+  },
+  staff: {
+    dashboard: ['view'],
+    inventory: ['view'],
+    masters: ['view'],
+    inbound: ['view', 'create', 'post'],
+    outbound: ['view', 'create', 'post'],
+    reports: ['view'],
+    audit: [],
+    users: [],
+  },
+  viewer: {
+    dashboard: ['view'],
+    inventory: ['view'],
+    masters: ['view'],
+    inbound: ['view'],
+    outbound: ['view'],
+    reports: ['view', 'print'],
+    audit: ['view'],
+    users: [],
+  },
+}
+
 async function main() {
   console.log('🌱 Seeding Whirlpool BD warehouse data...')
 
+  // ── RBAC: Create roles & permissions ─────────────────
+  const roles: Record<string, any> = {}
+  for (const [roleName, perms] of Object.entries(ROLE_PERMISSIONS)) {
+    const label = roleName === 'admin' ? 'Administrator'
+      : roleName === 'manager' ? 'Warehouse Manager'
+      : roleName === 'staff' ? 'Staff'
+      : 'Viewer'
+    const role = await db.role.create({
+      data: {
+        name: roleName,
+        label,
+        description: `${label} role with predefined permissions`,
+        isSystem: true,
+        permissions: {
+          create: Object.entries(perms).flatMap(([module, actions]) =>
+            actions.map(action => ({ module, action }))
+          ),
+        },
+      },
+      include: { permissions: true },
+    })
+    roles[roleName] = role
+    console.log(`  Role: ${roleName} — ${role.permissions.length} permissions`)
+  }
+
   // ── Users (warehouse staff) ──────────────────────────
-  const admin = await db.user.upsert({
-    where: { email: 'admin@whirlpool-bd.com' },
-    update: {},
-    create: { email: 'admin@whirlpool-bd.com', name: 'Foysal Ahmed', role: 'admin' },
+  const admin = await db.user.create({
+    data: { email: 'admin@whirlpool-bd.com', name: 'Foysal Ahmed', role: 'admin', passwordHash: '$2a$10$dummyhash_admin_12345678901234567890123456789012345678901234567890' },
   })
-  const manager = await db.user.upsert({
-    where: { email: 'manager@whirlpool-bd.com' },
-    update: {},
-    create: { email: 'manager@whirlpool-bd.com', name: 'Sadia Karim', role: 'manager' },
+  const manager = await db.user.create({
+    data: { email: 'manager@whirlpool-bd.com', name: 'Sadia Karim', role: 'manager', passwordHash: '$2a$10$dummyhash_manager_123456789012345678901234567890123456789012345' },
   })
-  const grnClerk = await db.user.upsert({
-    where: { email: 'grn@whirlpool-bd.com' },
-    update: {},
-    create: { email: 'grn@whirlpool-bd.com', name: 'Rakib Hossain', role: 'staff' },
+  const grnClerk = await db.user.create({
+    data: { email: 'staff@whirlpool-bd.com', name: 'Rakib Hossain', role: 'staff', passwordHash: '$2a$10$dummyhash_staff_12345678901234567890123456789012345678901234567890' },
   })
 
   // ── Suppliers (Whirlpool sourcing entities) ──────────

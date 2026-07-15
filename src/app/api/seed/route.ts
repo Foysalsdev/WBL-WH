@@ -11,6 +11,8 @@ export async function POST() {
     const { PrismaClient } = await import('@prisma/client')
     const db = new PrismaClient()
     await db.auditLog.deleteMany()
+    await db.permission.deleteMany()
+    await db.role.deleteMany()
     await db.dispatchItem.deleteMany()
     await db.dispatch.deleteMany()
     await db.movement.deleteMany()

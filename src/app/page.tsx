@@ -4,6 +4,8 @@ import { ThemeProvider } from 'next-themes'
 import { QueryProvider } from '@/lib/api/query-provider'
 import { AppShell } from '@/components/layout/AppShell'
 import { useUI } from '@/lib/store/ui'
+import { useAuth } from '@/lib/auth/session'
+import { LoginPage } from '@/features/auth/LoginPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { InventoryPage } from '@/features/inventory/InventoryPage'
 import { CatalogPage } from '@/features/catalog/CatalogPage'
@@ -15,19 +17,24 @@ const ENABLED_MODULES = new Set(['dashboard', 'inventory', 'masters', 'inbound',
 
 export default function Home() {
   const activeModule = useUI((s) => s.activeModule)
+  const isAuthenticated = useAuth((s) => s.isAuthenticated)
 
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
       <QueryProvider>
-        <AppShell>
-          {activeModule === 'dashboard'  && <DashboardPage />}
-          {activeModule === 'inventory'  && <InventoryPage />}
-          {activeModule === 'masters'    && <CatalogPage />}
-          {activeModule === 'inbound'    && <InboundPage />}
-          {activeModule === 'outbound'   && <OutboundPage />}
-          {activeModule === 'reports'    && <ReportsPage />}
-          {!ENABLED_MODULES.has(activeModule) && <ComingSoon />}
-        </AppShell>
+        {!isAuthenticated ? (
+          <LoginPage />
+        ) : (
+          <AppShell>
+            {activeModule === 'dashboard'  && <DashboardPage />}
+            {activeModule === 'inventory'  && <InventoryPage />}
+            {activeModule === 'masters'    && <CatalogPage />}
+            {activeModule === 'inbound'    && <InboundPage />}
+            {activeModule === 'outbound'   && <OutboundPage />}
+            {activeModule === 'reports'    && <ReportsPage />}
+            {!ENABLED_MODULES.has(activeModule) && <ComingSoon />}
+          </AppShell>
+        )}
       </QueryProvider>
     </ThemeProvider>
   )
@@ -54,13 +61,8 @@ function ComingSoon() {
         This module will be built in the next phase of our phased rollout.
       </p>
       <p className="text-sm text-muted-foreground">
-        Foundation, dashboard, inventory, catalog, inbound, outbound, and reports are live.
+        All core modules are live — Dashboard, Inventory, Catalog, Inbound, Outbound, Reports.
       </p>
-      <div className="mt-6 inline-flex items-center gap-2 rounded-full border bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground">
-        <span className="font-mono">Phase 5 · Reports complete</span>
-        <span>·</span>
-        <span>Next up: Phase 6 · {label}</span>
-      </div>
     </div>
   )
 }

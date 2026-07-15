@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { MODULES, type ModuleKey } from '@/domain/modules'
 import { useUI } from '@/lib/store/ui'
-import { useSession } from '@/lib/auth/session'
+import { useAuth } from '@/lib/auth/session'
 import { cn } from '@/lib/utils'
 import { BrandWordmark } from './BrandMark'
 
@@ -61,7 +61,9 @@ function SidebarContent({
   onSelect: (m: ModuleKey) => void
   onCollapse?: () => void
 }) {
-  const user = useSession((s) => s.user)
+  const user = useAuth((s) => s.user)
+  const hasPermission = useAuth((s) => s.hasPermission)
+  const hasAnyPermission = useAuth((s) => s.hasAnyPermission)
 
   return (
     <div className="flex h-full flex-col">
@@ -100,7 +102,7 @@ function SidebarContent({
             Warehouse Operations
           </p>
         )}
-        {MODULES.map((m) => {
+        {MODULES.filter(m => m.enabled && (user?.role === 'admin' || hasAnyPermission(m.key))).map((m) => {
           const Icon = m.icon
           const isActive = active === m.key
           return (
