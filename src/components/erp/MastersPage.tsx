@@ -29,15 +29,15 @@ export function MastersPage() {
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-[1600px] mx-auto">
       <PageHeader
-        title="Masters"
-        description="Configuration data — products, customers, suppliers and warehouses."
+        title="Catalog & Parties"
+        description="Whirlpool product catalog, dealer network, sourcing partners and warehouse locations."
         icon={<Database className="h-5 w-5" />}
       />
       <Tabs value={mastersTab} onValueChange={(v) => set({ mastersTab: v })}>
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="products"><Boxes className="h-4 w-4 mr-1.5" />Products</TabsTrigger>
-          <TabsTrigger value="customers"><Users className="h-4 w-4 mr-1.5" />Customers</TabsTrigger>
-          <TabsTrigger value="suppliers"><Truck className="h-4 w-4 mr-1.5" />Suppliers</TabsTrigger>
+          <TabsTrigger value="customers"><Users className="h-4 w-4 mr-1.5" />Dealers</TabsTrigger>
+          <TabsTrigger value="suppliers"><Truck className="h-4 w-4 mr-1.5" />Sourcing</TabsTrigger>
           <TabsTrigger value="warehouses"><Building2 className="h-4 w-4 mr-1.5" />Warehouses</TabsTrigger>
         </TabsList>
         <TabsContent value="products" className="mt-4"><ProductsTab /></TabsContent>
@@ -226,20 +226,21 @@ function CustomersTab() {
     <Card>
       <CardContent className="p-4">
         <Header
-          title="Customers"
+          title="dealers"
           search={search} setSearch={setSearch}
           onAdd={() => setOpen(true)} onRefresh={load}
+          addLabel="New dealer"
         />
         {loading ? (
           <Skeletons />
         ) : filtered.length === 0 ? (
-          <EmptyState icon={<Users className="h-6 w-6" />} title="No customers yet" action={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />New customer</Button>} />
+          <EmptyState icon={<Users className="h-6 w-6" />} title="No dealers yet" action={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />New dealer</Button>} />
         ) : (
           <TableWrap>
             <Table>
               <TableHeader className="sticky top-0 bg-card z-10">
                 <TableRow>
-                  <TableHead>Code</TableHead><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Phone</TableHead><TableHead>City</TableHead><TableHead>Created</TableHead>
+                  <TableHead>Dealer Code</TableHead><TableHead>Showroom / Dealer</TableHead><TableHead>Email</TableHead><TableHead>Phone</TableHead><TableHead>City</TableHead><TableHead>Added</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -259,7 +260,7 @@ function CustomersTab() {
         )}
         <PartyDialog
           open={open} onOpenChange={setOpen} onDone={() => { setOpen(false); load() }}
-          kind="customer"
+          kind="customer" title="New Dealer" description="Register a new Whirlpool dealer or showroom outlet."
         />
       </CardContent>
     </Card>
@@ -288,15 +289,15 @@ function SuppliersTab() {
   return (
     <Card>
       <CardContent className="p-4">
-        <Header title="Suppliers" search={search} setSearch={setSearch} onAdd={() => setOpen(true)} onRefresh={load} />
+        <Header title="sourcing partners" search={search} setSearch={setSearch} onAdd={() => setOpen(true)} onRefresh={load} addLabel="New supplier" />
         {loading ? <Skeletons /> : filtered.length === 0 ? (
-          <EmptyState icon={<Truck className="h-6 w-6" />} title="No suppliers yet" action={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />New supplier</Button>} />
+          <EmptyState icon={<Truck className="h-6 w-6" />} title="No sourcing partners yet" action={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />New supplier</Button>} />
         ) : (
           <TableWrap>
             <Table>
               <TableHeader className="sticky top-0 bg-card z-10">
                 <TableRow>
-                  <TableHead>Code</TableHead><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Phone</TableHead><TableHead>City</TableHead><TableHead>Created</TableHead>
+                  <TableHead>Supplier Code</TableHead><TableHead>Sourcing Entity</TableHead><TableHead>Email</TableHead><TableHead>Phone</TableHead><TableHead>Location</TableHead><TableHead>Added</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -314,7 +315,7 @@ function SuppliersTab() {
             </Table>
           </TableWrap>
         )}
-        <PartyDialog open={open} onOpenChange={setOpen} onDone={() => { setOpen(false); load() }} kind="supplier" />
+        <PartyDialog open={open} onOpenChange={setOpen} onDone={() => { setOpen(false); load() }} kind="supplier" title="New Sourcing Partner" description="Register a Whirlpool sourcing entity (e.g. Whirlpool Corp USA, India, Thailand)." />
       </CardContent>
     </Card>
   )
@@ -404,7 +405,7 @@ function WarehouseDialog({ open, onOpenChange, onDone }: { open: boolean; onOpen
   )
 }
 
-function PartyDialog({ open, onOpenChange, onDone, kind }: { open: boolean; onOpenChange: (o: boolean) => void; onDone: () => void; kind: 'customer' | 'supplier' }) {
+function PartyDialog({ open, onOpenChange, onDone, kind, title, description }: { open: boolean; onOpenChange: (o: boolean) => void; onDone: () => void; kind: 'customer' | 'supplier'; title: string; description?: string }) {
   const [form, setForm] = useState({ code: '', name: '', email: '', phone: '', address: '', city: '' })
   const [saving, setSaving] = useState(false)
   function set<K extends keyof typeof form>(k: K, v: string) { setForm((f) => ({ ...f, [k]: v })) }
@@ -413,7 +414,7 @@ function PartyDialog({ open, onOpenChange, onDone, kind }: { open: boolean; onOp
     setSaving(true)
     try {
       const r = await fetch(`/api/${kind}s`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
-      if (r.ok) { toast.success(`${kind[0].toUpperCase() + kind.slice(1)} created`); onDone(); setForm({ code: '', name: '', email: '', phone: '', address: '', city: '' }) }
+      if (r.ok) { toast.success('Record created'); onDone(); setForm({ code: '', name: '', email: '', phone: '', address: '', city: '' }) }
       else { const j = await r.json(); toast.error('Failed', { description: j.error }) }
     } finally { setSaving(false) }
   }
@@ -421,11 +422,11 @@ function PartyDialog({ open, onOpenChange, onDone, kind }: { open: boolean; onOp
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New {kind === 'customer' ? 'Customer' : 'Supplier'}</DialogTitle>
-          <DialogDescription>Add a new {kind} record.</DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description || `Add a new ${kind} record.`}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2 sm:grid-cols-2">
-          <Field label="Code *"><Input value={form.code} onChange={(e) => set('code', e.target.value)} placeholder={kind === 'customer' ? 'CUST-005' : 'SUP-004'} /></Field>
+          <Field label="Code *"><Input value={form.code} onChange={(e) => set('code', e.target.value)} placeholder={kind === 'customer' ? 'DLR-007' : 'WHP-XXX'} /></Field>
           <Field label="Name *"><Input value={form.name} onChange={(e) => set('name', e.target.value)} /></Field>
           <Field label="Email"><Input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} /></Field>
           <Field label="Phone"><Input value={form.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
@@ -449,16 +450,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   )
 }
-function Header({ title, search, setSearch, onAdd, onRefresh }: { title: string; search: string; setSearch: (s: string) => void; onAdd: () => void; onRefresh: () => void }) {
+function Header({ title, search, setSearch, onAdd, onRefresh, addLabel = 'Add' }: { title: string; search: string; setSearch: (s: string) => void; onAdd: () => void; onRefresh: () => void; addLabel?: string }) {
   return (
     <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between mb-4">
       <div className="relative flex-1 max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder={`Search ${title.toLowerCase()}…`} className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Input placeholder={`Search ${title}…`} className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
       <div className="flex gap-2">
         <Button variant="outline" size="icon" onClick={onRefresh} title="Refresh"><RefreshCw className="h-4 w-4" /></Button>
-        <Button onClick={onAdd}><Plus className="h-4 w-4 mr-1" />Add</Button>
+        <Button onClick={onAdd}><Plus className="h-4 w-4 mr-1" />{addLabel}</Button>
       </div>
     </div>
   )

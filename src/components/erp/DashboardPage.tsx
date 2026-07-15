@@ -51,8 +51,8 @@ export function DashboardPage() {
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-[1600px] mx-auto">
       <PageHeader
-        title="Operations Dashboard"
-        description="Live snapshot of inventory, orders and warehouse activity."
+        title="Whirlpool Bangladesh · Warehouse Dashboard"
+        description="Live snapshot of inbound, outbound, stock and dispatch operations."
       />
 
       {/* KPI cards */}

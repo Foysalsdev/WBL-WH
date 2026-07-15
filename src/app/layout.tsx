@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "3i Logistics · ERP + WMS",
-  description: "Modern Warehouse Management & ERP system for 3i Logistics Pvt. Ltd.",
+  title: "Whirlpool Bangladesh · WMS",
+  description: "Warehouse Management System for Whirlpool Bangladesh operations.",
 };
 
 export default function RootLayout({

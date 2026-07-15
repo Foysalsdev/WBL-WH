@@ -124,27 +124,35 @@ model Movement {
 // ───────────────────────────────────────────────
 
 model PurchaseOrder {
-  id           String   @id @default(cuid())
-  poNumber     String   @unique
-  supplierId   String
-  status       String   @default("draft") // draft | ordered | received | cancelled
-  totalAmount  Float    @default(0)
-  orderDate    DateTime @default(now())
-  expectedDate DateTime?
-  receivedDate DateTime?
-  notes        String?
-  supplier     Supplier @relation(fields: [supplierId], references: [id])
-  items        PurchaseOrderItem[]
+  id              String   @id @default(cuid())
+  poNumber        String   @unique
+  supplierId      String
+  status          String   @default("draft") // draft | ordered | partial | received | cancelled
+  totalAmount     Float    @default(0)
+  orderDate       DateTime @default(now())
+  expectedDate    DateTime?
+  receivedDate    DateTime?
+  receivedBy      String?
+  grnNumber       String?
+  vehicleNo       String?  // supplier delivery vehicle
+  invoiceRef      String?  // supplier invoice/challan reference
+  notes           String?
+  supplier        Supplier @relation(fields: [supplierId], references: [id])
+  items           PurchaseOrderItem[]
 }
 
 model PurchaseOrderItem {
-  id         String  @id @default(cuid())
-  poId       String
-  productId  String
-  quantity   Int
-  unitPrice  Float
-  po         PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
-  product    Product  @relation(fields: [productId], references: [id])
+  id              String  @id @default(cuid())
+  poId            String
+  productId       String
+  quantity        Int     // ordered
+  receivedQty     Int     @default(0) // total received so far
+  passedQty       Int     @default(0) // quality-checked OK
+  failedQty       Int     @default(0) // damaged / rejected on receipt
+  unitPrice       Float
+  putawayLocation String? // zone/rack/bin where stock was put away
+  po              PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id])
 }
 
 // ───────────────────────────────────────────────
@@ -152,23 +160,41 @@ model PurchaseOrderItem {
 // ───────────────────────────────────────────────
 
 model SalesOrder {
-  id           String   @id @default(cuid())
-  soNumber     String   @unique
-  customerId   String
-  status       String   @default("draft") // draft | confirmed | picked | shipped | delivered | cancelled
-  totalAmount  Float    @default(0)
-  orderDate    DateTime @default(now())
-  deliveryDate DateTime?
-  notes        String?
-  customer     Customer @relation(fields: [customerId], references: [id])
-  items        SalesOrderItem[]
+  id              String   @id @default(cuid())
+  soNumber        String   @unique
+  customerId      String
+  status          String   @default("draft") // draft | confirmed | picked | packed | shipped | delivered | cancelled
+  totalAmount     Float    @default(0)
+  orderDate       DateTime @default(now())
+  deliveryDate    DateTime?
+  notes           String?
+  // Pick / pack
+  pickedBy        String?
+  pickedAt        DateTime?
+  packedBy        String?
+  packedAt        DateTime?
+  cartonCount     Int      @default(0)
+  // Dispatch
+  challanNo       String?
+  vehicleNo       String?
+  driverName      String?
+  driverPhone     String?
+  shippedAt       DateTime?
+  // Delivery confirmation (POD)
+  podStatus       String?  // pending | confirmed | failed | rescheduled
+  podReceivedBy   String?
+  podDate         DateTime?
+  podNotes        String?
+  customer        Customer @relation(fields: [customerId], references: [id])
+  items           SalesOrderItem[]
 }
 
 model SalesOrderItem {
   id         String  @id @default(cuid())
   soId       String
   productId  String
-  quantity   Int
+  quantity   Int     // ordered
+  pickedQty  Int     @default(0) // picked from shelf
   unitPrice  Float
   so         SalesOrder @relation(fields: [soId], references: [id], onDelete: Cascade)
   product    Product  @relation(fields: [productId], references: [id])

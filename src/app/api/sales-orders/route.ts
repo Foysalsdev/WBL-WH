@@ -41,26 +41,117 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(so, { status: 201 })
 }
 
-// PATCH /api/sales-orders — update status; on "shipped", post stock out
+// PATCH /api/sales-orders — perform lifecycle actions
 export async function PATCH(req: NextRequest) {
   const body = await req.json()
-  const { id, status } = body
-  const so = await db.salesOrder.findUnique({ where: { id }, include: { items: true } })
-  if (!so) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const { id, action } = body
 
-  const updated = await db.salesOrder.update({ where: { id }, data: { status } })
-
-  if (status === 'shipped' && so.status !== 'shipped') {
-    for (const it of so.items) {
-      const stock = await db.stock.findUnique({ where: { productId: it.productId } })
-      if (stock) {
-        await db.stock.update({ where: { productId: it.productId }, data: { quantity: Math.max(0, stock.quantity - it.quantity) } })
-      }
-      await db.movement.create({ data: { productId: it.productId, type: 'OUT', quantity: -it.quantity, reference: so.soNumber, notes: `Shipment against ${so.soNumber}` } })
-    }
-    await db.auditLog.create({ data: { action: 'POST', entity: 'SalesOrder', entityId: so.id, userName: 'System', details: `Posted shipment for ${so.soNumber}` } })
+  if (action === 'status') {
+    const so = await db.salesOrder.findUnique({ where: { id } })
+    if (!so) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const updated = await db.salesOrder.update({ where: { id }, data: { status: body.status } })
+    await db.auditLog.create({ data: { action: 'UPDATE', entity: 'SalesOrder', entityId: so.id, userName: 'System', details: `${so.soNumber} → ${body.status}` } })
+    return NextResponse.json(updated)
   }
 
-  await db.auditLog.create({ data: { action: 'UPDATE', entity: 'SalesOrder', entityId: so.id, userName: 'System', details: `${so.soNumber} → ${status}` } })
-  return NextResponse.json(updated)
+  if (action === 'pick') {
+    // Mark items as picked (updates pickedQty, sets pickedBy/At, status → picked)
+    const { pickedBy, items: pickItems } = body
+    const so = await db.salesOrder.findUnique({ where: { id }, include: { items: true } })
+    if (!so) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!['confirmed', 'picked'].includes(so.status)) {
+      return NextResponse.json({ error: `Cannot pick in ${so.status} status` }, { status: 400 })
+    }
+    for (const pi of pickItems) {
+      await db.salesOrderItem.update({ where: { id: pi.id }, data: { pickedQty: Number(pi.pickedQty) } })
+    }
+    await db.salesOrder.update({
+      where: { id },
+      data: { status: 'picked', pickedBy: pickedBy || so.pickedBy, pickedAt: new Date() },
+    })
+    await db.auditLog.create({ data: { action: 'POST', entity: 'SalesOrder', entityId: so.id, userName: pickedBy || 'System', details: `${so.soNumber} picked` } })
+    return NextResponse.json({ ok: true, status: 'picked' })
+  }
+
+  if (action === 'pack') {
+    const { packedBy, cartonCount } = body
+    const so = await db.salesOrder.findUnique({ where: { id } })
+    if (!so) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (so.status !== 'picked') return NextResponse.json({ error: 'Must be picked first' }, { status: 400 })
+    await db.salesOrder.update({
+      where: { id },
+      data: { status: 'packed', packedBy: packedBy || so.packedBy, packedAt: new Date(), cartonCount: Number(cartonCount) || 0 },
+    })
+    await db.auditLog.create({ data: { action: 'POST', entity: 'SalesOrder', entityId: so.id, userName: packedBy || 'System', details: `${so.soNumber} packed — ${cartonCount} cartons` } })
+    return NextResponse.json({ ok: true, status: 'packed' })
+  }
+
+  if (action === 'dispatch') {
+    const { challanNo, vehicleNo, driverName, driverPhone } = body
+    const so = await db.salesOrder.findUnique({ where: { id }, include: { items: true } })
+    if (!so) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (so.status !== 'packed') return NextResponse.json({ error: 'Must be packed first' }, { status: 400 })
+
+    // generate challan if not provided
+    const year = new Date().getFullYear()
+    const finalChallan = challanNo || `CH-${year}-${String(Math.floor(Math.random() * 9000) + 1000)}`
+
+    // deduct stock on dispatch
+    for (const it of so.items) {
+      const deduct = it.pickedQty || it.quantity
+      const stock = await db.stock.findUnique({ where: { productId: it.productId } })
+      if (stock) await db.stock.update({ where: { productId: it.productId }, data: { quantity: Math.max(0, stock.quantity - deduct) } })
+      await db.movement.create({ data: { productId: it.productId, type: 'OUT', quantity: -deduct, reference: so.soNumber, notes: `Dispatched on ${finalChallan} to ${so.soNumber}` } })
+    }
+
+    await db.salesOrder.update({
+      where: { id },
+      data: {
+        status: 'shipped',
+        challanNo: finalChallan,
+        vehicleNo: vehicleNo || null,
+        driverName: driverName || null,
+        driverPhone: driverPhone || null,
+        shippedAt: new Date(),
+        podStatus: 'pending',
+      },
+    })
+    await db.auditLog.create({
+      data: {
+        action: 'POST', entity: 'SalesOrder', entityId: so.id, userName: 'System',
+        details: `${so.soNumber} dispatched on ${finalChallan} (vehicle ${vehicleNo || '—'})`,
+      },
+    })
+    return NextResponse.json({ ok: true, status: 'shipped', challanNo: finalChallan })
+  }
+
+  if (action === 'pod') {
+    // Proof of delivery — confirm/failed/rescheduled
+    const { podStatus, podReceivedBy, podNotes } = body
+    const so = await db.salesOrder.findUnique({ where: { id } })
+    if (!so) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (so.status !== 'shipped') return NextResponse.json({ error: 'Must be shipped first' }, { status: 400 })
+
+    const newStatus = podStatus === 'confirmed' ? 'delivered' : so.status
+    await db.salesOrder.update({
+      where: { id },
+      data: {
+        status: newStatus,
+        podStatus,
+        podReceivedBy: podReceivedBy || null,
+        podDate: new Date(),
+        podNotes: podNotes || null,
+        ...(podStatus === 'confirmed' ? { deliveryDate: new Date() } : {}),
+      },
+    })
+    await db.auditLog.create({
+      data: {
+        action: 'CONFIRM', entity: 'SalesOrder', entityId: so.id, userName: podReceivedBy || 'System',
+        details: `${so.soNumber} POD ${podStatus}${podNotes ? ` — ${podNotes}` : ''}`,
+      },
+    })
+    return NextResponse.json({ ok: true, status: newStatus, podStatus })
+  }
+
+  return NextResponse.json({ error: 'unknown action' }, { status: 400 })
 }

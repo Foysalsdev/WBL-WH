@@ -31,9 +31,9 @@ export const useApp = create<AppState>((set) => ({
 export const MODULES: { key: ModuleKey; label: string; icon: string; description: string }[] = [
   { key: 'dashboard', label: 'Dashboard', icon: 'LayoutDashboard', description: 'KPIs & overview' },
   { key: 'inventory', label: 'Inventory', icon: 'Boxes', description: 'Stock & movements' },
-  { key: 'masters', label: 'Masters', icon: 'Database', description: 'Products, parties, warehouses' },
-  { key: 'inbound', label: 'Inbound', icon: 'PackageOpen', description: 'Purchase orders & GRN' },
-  { key: 'outbound', label: 'Outbound', icon: 'Truck', description: 'Sales orders & dispatch' },
+  { key: 'masters', label: 'Catalog & Parties', icon: 'Database', description: 'Products, dealers, suppliers, warehouses' },
+  { key: 'inbound', label: 'Inbound · GRN', icon: 'PackageOpen', description: 'Purchase orders & goods receipt' },
+  { key: 'outbound', label: 'Outbound · Dispatch', icon: 'Truck', description: 'Sales orders, pick, dispatch, POD' },
   { key: 'reports', label: 'Reports', icon: 'BarChart3', description: 'Stock, valuation, movement' },
   { key: 'audit', label: 'Audit Log', icon: 'ClipboardList', description: 'Activity trail' },
 ]

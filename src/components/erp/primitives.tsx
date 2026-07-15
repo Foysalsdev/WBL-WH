@@ -70,8 +70,10 @@ export function BadgeFor({ status }: { status: string }) {
   const map: Record<string, string> = {
     draft:        'bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20',
     ordered:      'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
+    partial:      'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
     confirmed:    'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
     picked:       'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20',
+    packed:       'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
     shipped:      'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
     received:     'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
     delivered:    'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
