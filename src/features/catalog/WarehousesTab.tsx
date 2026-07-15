@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Building2, Plus, Printer, Trash2, MapPin, Boxes } from 'lucide-react'
 import { StatCard } from '@/components/system'
@@ -24,7 +24,7 @@ import { num } from '@/lib/format'
 import type { Warehouse, WarehouseInput } from '@/domain/schemas'
 
 // ═══════════════════════════════════════════════════════════════
-//  WarehousesTab — premium card grid of warehouses with click-to-view
+//  WarehousesTab — full CRUD with premium card grid
 // ═══════════════════════════════════════════════════════════════
 
 const EMPTY_FORM: WarehouseInput = {
@@ -34,6 +34,7 @@ const EMPTY_FORM: WarehouseInput = {
 export function WarehousesTab() {
   const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
+  const [editItem, setEditItem] = useState<Warehouse | null>(null)
   const [viewItem, setViewItem] = useState<Warehouse | null>(null)
   const [deleteItem, setDeleteItem] = useState<Warehouse | null>(null)
   const [form, setForm] = useState<WarehouseInput>(EMPTY_FORM)
@@ -53,6 +54,36 @@ export function WarehousesTab() {
     },
   })
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Partial<WarehouseInput> }) =>
+      warehousesApi.update(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['warehouses'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => warehousesApi.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['warehouses'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+
+  useEffect(() => {
+    if (editItem) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setForm({
+        code: editItem.code,
+        name: editItem.name,
+        address: editItem.address || '',
+        city: editItem.city || '',
+        capacity: editItem.capacity,
+      })
+    }
+  }, [editItem])
+
   const filtered = (data || []).filter((w) => {
     if (!debouncedSearch) return true
     const q = debouncedSearch.toLowerCase()
@@ -70,6 +101,11 @@ export function WarehousesTab() {
     setCreateOpen(true)
   }
 
+  function openEdit(w: Warehouse) {
+    setViewItem(null)
+    setEditItem(w)
+  }
+
   async function submitCreate() {
     if (!form.code || !form.name) {
       toast.error('Code and name are required')
@@ -84,16 +120,34 @@ export function WarehousesTab() {
     }
   }
 
-  function handlePrint(w: Warehouse) {
-    toast.info('Print preview', { description: `Generating PDF for ${w.code}…` })
+  async function submitEdit() {
+    if (!editItem) return
+    if (!form.code || !form.name) {
+      toast.error('Code and name are required')
+      return
+    }
+    try {
+      const w = await updateMutation.mutateAsync({ id: editItem.id, input: form })
+      toast.success('Warehouse updated', { description: `${w.code} · ${w.name}` })
+      setEditItem(null)
+    } catch (e: any) {
+      toast.error('Failed to update warehouse', { description: e.message })
+    }
   }
 
-  function handleDelete() {
+  function handlePrint(w: Warehouse) {
+    printWarehouseDetail(w)
+  }
+
+  async function handleDelete() {
     if (!deleteItem) return
-    toast.info('Delete coming soon', {
-      description: `Delete for ${deleteItem.code} will be wired in Phase 7.`,
-    })
-    setDeleteItem(null)
+    try {
+      await deleteMutation.mutateAsync(deleteItem.id)
+      toast.success('Warehouse deleted', { description: `${deleteItem.code} · ${deleteItem.name}` })
+      setDeleteItem(null)
+    } catch (e: any) {
+      toast.error('Failed to delete warehouse', { description: e.message })
+    }
   }
 
   function viewFields(w: Warehouse): ViewField[] {
@@ -171,6 +225,7 @@ export function WarehousesTab() {
                   <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                     <RowActions
                       onView={() => setViewItem(w)}
+                      onEdit={() => openEdit(w)}
                       onPrint={() => handlePrint(w)}
                       onDelete={() => setDeleteItem(w)}
                     />
@@ -191,25 +246,19 @@ export function WarehousesTab() {
         submitLabel={createMutation.isPending ? 'Creating…' : 'Create'}
         disabled={createMutation.isPending}
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Code" required>
-            <input className={inputClass} value={form.code} onChange={(e) => setField('code', e.target.value)} placeholder="WHS-TONGI" />
-          </Field>
-          <Field label="Name" required>
-            <input className={inputClass} value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="Tongi Central Warehouse" />
-          </Field>
-          <div className="sm:col-span-2">
-            <Field label="Address">
-              <input className={inputClass} value={form.address} onChange={(e) => setField('address', e.target.value)} />
-            </Field>
-          </div>
-          <Field label="City">
-            <input className={inputClass} value={form.city} onChange={(e) => setField('city', e.target.value)} />
-          </Field>
-          <Field label="Capacity (units)">
-            <input type="number" min="0" className={inputClass} value={form.capacity} onChange={(e) => setField('capacity', Number(e.target.value))} />
-          </Field>
-        </div>
+        <WarehouseForm form={form} setField={setField} />
+      </CreateDialog>
+
+      <CreateDialog
+        open={editItem !== null}
+        onOpenChange={(o) => !o && setEditItem(null)}
+        title="Edit Warehouse"
+        description={`Editing ${editItem?.code} — ${editItem?.name}`}
+        onSubmit={submitEdit}
+        submitLabel={updateMutation.isPending ? 'Saving…' : 'Save changes'}
+        disabled={updateMutation.isPending}
+      >
+        <WarehouseForm form={form} setField={setField} />
       </CreateDialog>
 
       <ViewDialog
@@ -220,7 +269,7 @@ export function WarehousesTab() {
         subtitle={viewItem ? `${viewItem.address || '—'}, ${viewItem.city || '—'}` : ''}
         badge={viewItem ? { label: 'Active', tone: 'success' } : undefined}
         fields={viewItem ? viewFields(viewItem) : []}
-        onEdit={() => { toast.info('Edit coming soon'); setViewItem(null) }}
+        onEdit={() => viewItem && openEdit(viewItem)}
         onPrint={() => viewItem && handlePrint(viewItem)}
         footer={
           viewItem && viewItem.locations && viewItem.locations.length > 0 ? (
@@ -249,6 +298,7 @@ export function WarehousesTab() {
             <AlertDialogTitle>Delete warehouse?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently delete <span className="font-mono font-semibold">{deleteItem?.code}</span> — {deleteItem?.name}.
+              All location records under this warehouse will also be deleted.
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -265,4 +315,105 @@ export function WarehousesTab() {
       </AlertDialog>
     </div>
   )
+}
+
+// ─── Reusable warehouse form ────────────────────────────────────
+function WarehouseForm({
+  form, setField,
+}: {
+  form: WarehouseInput
+  setField: <K extends keyof WarehouseInput>(key: K, value: WarehouseInput[K]) => void
+}) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Field label="Code" required>
+        <input className={inputClass} value={form.code} onChange={(e) => setField('code', e.target.value)} placeholder="WHS-TONGI" />
+      </Field>
+      <Field label="Name" required>
+        <input className={inputClass} value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="Tongi Central Warehouse" />
+      </Field>
+      <div className="sm:col-span-2">
+        <Field label="Address">
+          <input className={inputClass} value={form.address} onChange={(e) => setField('address', e.target.value)} />
+        </Field>
+      </div>
+      <Field label="City">
+        <input className={inputClass} value={form.city} onChange={(e) => setField('city', e.target.value)} />
+      </Field>
+      <Field label="Capacity (units)">
+        <input type="number" min="0" className={inputClass} value={form.capacity} onChange={(e) => setField('capacity', Number(e.target.value))} />
+      </Field>
+    </div>
+  )
+}
+
+// ─── Print helper ────────────────────────────────────────────────
+function printWarehouseDetail(w: Warehouse) {
+  const w2 = window.open('', '_blank', 'width=720,height=900')
+  if (!w2) {
+    toast.error('Could not open print window', { description: 'Please allow pop-ups for this site.' })
+    return
+  }
+  const locs = w.locations || []
+  w2.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>${w.code} — Warehouse Detail</title>
+      <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0; padding: 32px; color: #142032; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 16px; border-bottom: 2px solid #0c389f; margin-bottom: 24px; }
+        .brand { font-size: 18px; font-weight: 700; color: #0c389f; }
+        .brand-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
+        .doc-meta { text-align: right; font-size: 11px; color: #6b7280; }
+        .doc-meta strong { color: #142032; font-size: 13px; }
+        h1 { font-size: 22px; margin: 0 0 4px 0; }
+        .code { font-family: 'Menlo', monospace; font-size: 13px; color: #6b7280; margin-bottom: 24px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 32px; margin-bottom: 24px; }
+        .field { border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+        .field-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 4px; }
+        .field-value { font-size: 14px; font-weight: 500; }
+        .field-value.mono { font-family: 'Menlo', monospace; }
+        h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin: 32px 0 12px 0; }
+        .locs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .loc { padding: 8px; border: 1px solid #e5e7eb; border-radius: 4px; font-family: 'Menlo', monospace; font-size: 12px; text-align: center; }
+        .footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280; text-align: center; }
+        @media print { body { padding: 16px; } }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div>
+          <div class="brand">Whirlpool Bangladesh</div>
+          <div class="brand-sub">Warehouse Management System · Warehouse Detail</div>
+        </div>
+        <div class="doc-meta">
+          <strong>Warehouse Profile</strong><br/>
+          Printed: ${new Date().toLocaleString('en-GB')}
+        </div>
+      </div>
+      <h1>${w.name}</h1>
+      <div class="code">Code: ${w.code}</div>
+      <div class="grid">
+        <div class="field"><div class="field-label">Address</div><div class="field-value">${w.address || '—'}</div></div>
+        <div class="field"><div class="field-label">City</div><div class="field-value">${w.city || '—'}</div></div>
+        <div class="field"><div class="field-label">Capacity</div><div class="field-value mono">${num(w.capacity)} units</div></div>
+        <div class="field"><div class="field-label">Total Locations</div><div class="field-value mono">${num(locs.length)}</div></div>
+      </div>
+      ${locs.length > 0 ? `
+        <h2>Storage Locations (${locs.length})</h2>
+        <div class="locs">
+          ${locs.map(loc => `<div class="loc">${loc.zone}-${loc.rack}-${loc.bin}</div>`).join('')}
+        </div>
+      ` : ''}
+      <div class="footer">
+        Whirlpool Bangladesh · WMS · Generated ${new Date().toLocaleString('en-GB')}
+      </div>
+    </body>
+    </html>
+  `)
+  w2.document.close()
+  w2.focus()
+  setTimeout(() => w2.print(), 250)
 }

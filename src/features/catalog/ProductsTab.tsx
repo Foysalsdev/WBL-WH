@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Boxes, Plus, Printer, Trash2 } from 'lucide-react'
 import { StatCard } from '@/components/system'
@@ -23,9 +23,7 @@ import { bdt, num, date } from '@/lib/format'
 import type { Product, ProductInput } from '@/domain/schemas'
 
 // ═══════════════════════════════════════════════════════════════
-//  ProductsTab — Whirlpool appliance catalog CRUD
-//  Now with: clickable SKU → View dialog, row action menu
-//  (View/Edit/Print/Delete), proper visual hierarchy.
+//  ProductsTab — Whirlpool appliance catalog full CRUD
 // ═══════════════════════════════════════════════════════════════
 
 const EMPTY_FORM: ProductInput = {
@@ -37,8 +35,8 @@ const EMPTY_FORM: ProductInput = {
 
 export function ProductsTab() {
   const [createOpen, setCreateOpen] = useState(false)
-  const [viewItem, setViewItem] = useState<Product | null>(null)
   const [editItem, setEditItem] = useState<Product | null>(null)
+  const [viewItem, setViewItem] = useState<Product | null>(null)
   const [deleteItem, setDeleteItem] = useState<Product | null>(null)
   const [form, setForm] = useState<ProductInput>(EMPTY_FORM)
   const [search, setSearch] = useState('')
@@ -57,6 +55,44 @@ export function ProductsTab() {
       qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Partial<ProductInput> }) =>
+      productsApi.update(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      qc.invalidateQueries({ queryKey: ['inventory'] })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => productsApi.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+
+  // Pre-populate form when opening edit
+  useEffect(() => {
+    if (editItem) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setForm({
+        sku: editItem.sku,
+        name: editItem.name,
+        category: editItem.category || '',
+        description: editItem.description || '',
+        unit: editItem.unit,
+        barcode: editItem.barcode || '',
+        costPrice: editItem.costPrice,
+        salePrice: editItem.salePrice,
+        reorderLevel: editItem.reorderLevel,
+        isActive: editItem.isActive,
+        stockQuantity: editItem.stock?.quantity ?? 0,
+      })
+    }
+  }, [editItem])
 
   const stats = (data || []).reduce(
     (acc, p) => {
@@ -78,6 +114,11 @@ export function ProductsTab() {
     setCreateOpen(true)
   }
 
+  function openEdit(p: Product) {
+    setViewItem(null)
+    setEditItem(p)
+  }
+
   async function submitCreate() {
     if (!form.sku || !form.name) {
       toast.error('SKU and name are required')
@@ -92,18 +133,35 @@ export function ProductsTab() {
     }
   }
 
+  async function submitEdit() {
+    if (!editItem) return
+    if (!form.sku || !form.name) {
+      toast.error('SKU and name are required')
+      return
+    }
+    try {
+      const { stockQuantity, ...rest } = form
+      const p = await updateMutation.mutateAsync({ id: editItem.id, input: { ...rest, stockQuantity } })
+      toast.success('Product updated', { description: `${p.sku} · ${p.name}` })
+      setEditItem(null)
+    } catch (e: any) {
+      toast.error('Failed to update product', { description: e.message })
+    }
+  }
+
   function handlePrint(p: Product) {
-    toast.info('Print preview', { description: `Generating PDF for ${p.sku}…` })
-    // In production: window.open(`/api/products/${p.id}/print`, '_blank')
+    printProductDetail(p)
   }
 
   async function handleDelete() {
     if (!deleteItem) return
-    // For now, soft-fail with a toast — real delete API comes in a later phase
-    toast.info('Delete coming soon', {
-      description: `Delete for ${deleteItem.sku} will be wired in Phase 7 (Audit & hardening).`,
-    })
-    setDeleteItem(null)
+    try {
+      await deleteMutation.mutateAsync(deleteItem.id)
+      toast.success('Product deleted', { description: `${deleteItem.sku} · ${deleteItem.name}` })
+      setDeleteItem(null)
+    } catch (e: any) {
+      toast.error('Failed to delete product', { description: e.message })
+    }
   }
 
   function viewFields(p: Product): ViewField[] {
@@ -147,7 +205,7 @@ export function ProductsTab() {
       cell: (p) => (
         <RowActions
           onView={() => setViewItem(p)}
-          onEdit={() => { toast.info('Edit coming soon', { description: `Edit for ${p.sku} will be wired in a later phase.` }) }}
+          onEdit={() => openEdit(p)}
           onPrint={() => handlePrint(p)}
           onDelete={() => setDeleteItem(p)}
         />
@@ -197,32 +255,21 @@ export function ProductsTab() {
         disabled={createMutation.isPending}
         maxWidth="max-w-2xl"
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="SKU" required>
-            <input className={inputClass} value={form.sku} onChange={(e) => setField('sku', e.target.value)} placeholder="WHP-REF-265L-IM" />
-          </Field>
-          <Field label="Name" required>
-            <input className={inputClass} value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="Whirlpool Protton 265L Refrigerator" />
-          </Field>
-          <Field label="Category">
-            <input className={inputClass} value={form.category} onChange={(e) => setField('category', e.target.value)} placeholder="Refrigerator" />
-          </Field>
-          <Field label="Unit">
-            <input className={inputClass} value={form.unit} onChange={(e) => setField('unit', e.target.value)} placeholder="pcs" />
-          </Field>
-          <Field label="Cost price (TK)">
-            <input type="number" min="0" className={inputClass} value={form.costPrice} onChange={(e) => setField('costPrice', Number(e.target.value))} />
-          </Field>
-          <Field label="Sale price (TK)">
-            <input type="number" min="0" className={inputClass} value={form.salePrice} onChange={(e) => setField('salePrice', Number(e.target.value))} />
-          </Field>
-          <Field label="Reorder level">
-            <input type="number" min="0" className={inputClass} value={form.reorderLevel} onChange={(e) => setField('reorderLevel', Number(e.target.value))} />
-          </Field>
-          <Field label="Opening stock qty" hint="Creates a stock record + opening-balance movement">
-            <input type="number" min="0" className={inputClass} value={form.stockQuantity} onChange={(e) => setField('stockQuantity', Number(e.target.value))} />
-          </Field>
-        </div>
+        <ProductForm form={form} setField={setField} />
+      </CreateDialog>
+
+      {/* Edit dialog */}
+      <CreateDialog
+        open={editItem !== null}
+        onOpenChange={(o) => !o && setEditItem(null)}
+        title="Edit Product"
+        description={`Editing ${editItem?.sku} — ${editItem?.name}`}
+        onSubmit={submitEdit}
+        submitLabel={updateMutation.isPending ? 'Saving…' : 'Save changes'}
+        disabled={updateMutation.isPending}
+        maxWidth="max-w-2xl"
+      >
+        <ProductForm form={form} setField={setField} />
       </CreateDialog>
 
       {/* View dialog */}
@@ -237,7 +284,7 @@ export function ProductsTab() {
           tone: viewItem.isActive ? 'success' : 'default',
         } : undefined}
         fields={viewItem ? viewFields(viewItem) : []}
-        onEdit={() => { toast.info('Edit coming soon'); setViewItem(null) }}
+        onEdit={() => viewItem && openEdit(viewItem)}
         onPrint={() => viewItem && handlePrint(viewItem)}
       />
 
@@ -264,4 +311,118 @@ export function ProductsTab() {
       </AlertDialog>
     </div>
   )
+}
+
+// ─── Reusable product form fields (used in both Create & Edit) ────
+function ProductForm({
+  form, setField,
+}: {
+  form: ProductInput
+  setField: <K extends keyof ProductInput>(key: K, value: ProductInput[K]) => void
+}) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Field label="SKU" required>
+        <input className={inputClass} value={form.sku} onChange={(e) => setField('sku', e.target.value)} placeholder="WHP-REF-265L-IM" />
+      </Field>
+      <Field label="Name" required>
+        <input className={inputClass} value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="Whirlpool Protton 265L Refrigerator" />
+      </Field>
+      <Field label="Category">
+        <input className={inputClass} value={form.category} onChange={(e) => setField('category', e.target.value)} placeholder="Refrigerator" />
+      </Field>
+      <Field label="Unit">
+        <input className={inputClass} value={form.unit} onChange={(e) => setField('unit', e.target.value)} placeholder="pcs" />
+      </Field>
+      <Field label="Barcode">
+        <input className={inputClass} value={form.barcode} onChange={(e) => setField('barcode', e.target.value)} placeholder="8801234567890" />
+      </Field>
+      <Field label="Reorder level">
+        <input type="number" min="0" className={inputClass} value={form.reorderLevel} onChange={(e) => setField('reorderLevel', Number(e.target.value))} />
+      </Field>
+      <Field label="Cost price (TK)">
+        <input type="number" min="0" className={inputClass} value={form.costPrice} onChange={(e) => setField('costPrice', Number(e.target.value))} />
+      </Field>
+      <Field label="Sale price (TK)">
+        <input type="number" min="0" className={inputClass} value={form.salePrice} onChange={(e) => setField('salePrice', Number(e.target.value))} />
+      </Field>
+      <Field label="Stock quantity" hint="Adjusts on-hand stock (writes a movement)">
+        <input type="number" min="0" className={inputClass} value={form.stockQuantity} onChange={(e) => setField('stockQuantity', Number(e.target.value))} />
+      </Field>
+      <div className="sm:col-span-2">
+        <Field label="Description">
+          <textarea className={inputClass + ' min-h-[60px]'} value={form.description} onChange={(e) => setField('description', e.target.value)} />
+        </Field>
+      </div>
+    </div>
+  )
+}
+
+// ─── Print helper — opens a print-ready window with product details ─
+function printProductDetail(p: Product) {
+  const stockQty = p.stock?.quantity ?? 0
+  const w = window.open('', '_blank', 'width=720,height=900')
+  if (!w) {
+    toast.error('Could not open print window', { description: 'Please allow pop-ups for this site.' })
+    return
+  }
+  w.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>${p.sku} — Product Detail</title>
+      <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0; padding: 32px; color: #142032; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 16px; border-bottom: 2px solid #0c389f; margin-bottom: 24px; }
+        .brand { font-size: 18px; font-weight: 700; color: #0c389f; }
+        .brand-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
+        .doc-meta { text-align: right; font-size: 11px; color: #6b7280; }
+        .doc-meta strong { color: #142032; font-size: 13px; }
+        h1 { font-size: 22px; margin: 0 0 4px 0; }
+        .sku { font-family: 'Menlo', monospace; font-size: 13px; color: #6b7280; margin-bottom: 24px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 32px; margin-bottom: 24px; }
+        .field { border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+        .field-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 4px; }
+        .field-value { font-size: 14px; font-weight: 500; }
+        .field-value.mono { font-family: 'Menlo', monospace; }
+        .footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280; text-align: center; }
+        @media print { body { padding: 16px; } }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div>
+          <div class="brand">Whirlpool Bangladesh</div>
+          <div class="brand-sub">Warehouse Management System · Product Detail</div>
+        </div>
+        <div class="doc-meta">
+          <strong>Product Detail</strong><br/>
+          Printed: ${new Date().toLocaleString('en-GB')}
+        </div>
+      </div>
+      <h1>${p.name}</h1>
+      <div class="sku">SKU: ${p.sku}</div>
+      <div class="grid">
+        <div class="field"><div class="field-label">Category</div><div class="field-value">${p.category || '—'}</div></div>
+        <div class="field"><div class="field-label">Unit</div><div class="field-value">${p.unit}</div></div>
+        <div class="field"><div class="field-label">Barcode</div><div class="field-value mono">${p.barcode || '—'}</div></div>
+        <div class="field"><div class="field-label">Status</div><div class="field-value">${p.isActive ? 'Active' : 'Inactive'}</div></div>
+        <div class="field"><div class="field-label">Cost Price</div><div class="field-value mono">TK ${p.costPrice.toLocaleString('en-IN')}</div></div>
+        <div class="field"><div class="field-label">Sale Price</div><div class="field-value mono">TK ${p.salePrice.toLocaleString('en-IN')}</div></div>
+        <div class="field"><div class="field-label">Reorder Level</div><div class="field-value mono">${p.reorderLevel} ${p.unit}</div></div>
+        <div class="field"><div class="field-label">Current Stock</div><div class="field-value mono">${stockQty} ${p.unit}</div></div>
+        <div class="field"><div class="field-label">Stock Value (cost)</div><div class="field-value mono">TK ${(stockQty * p.costPrice).toLocaleString('en-IN')}</div></div>
+        <div class="field"><div class="field-label">Stock Value (sale)</div><div class="field-value mono">TK ${(stockQty * p.salePrice).toLocaleString('en-IN')}</div></div>
+      </div>
+      ${p.description ? `<div class="field"><div class="field-label">Description</div><div class="field-value">${p.description}</div></div>` : ''}
+      <div class="footer">
+        Whirlpool Bangladesh · WMS · Generated ${new Date().toLocaleString('en-GB')}
+      </div>
+    </body>
+    </html>
+  `)
+  w.document.close()
+  w.focus()
+  setTimeout(() => w.print(), 250)
 }

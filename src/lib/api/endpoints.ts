@@ -11,6 +11,7 @@ import {
   Warehouse as WarehouseSchema, type Warehouse, type WarehouseInput,
   Movement as MovementSchema, type Movement,
   InventoryItem as InventoryItemSchema, type InventoryItem, type StockAdjustmentInput,
+  PurchaseOrder as PurchaseOrderSchema, type PurchaseOrder,
   AuditLog as AuditLogSchema, type AuditLog,
 } from '@/domain/schemas'
 import type { ZodTypeAny } from 'zod'
@@ -40,6 +41,10 @@ export const productsApi = {
        .then((arr) => arr.map((p) => safeParse<Product>(ProductSchema, p, 'product'))),
   create: (input: ProductInput) =>
     api.post<unknown>('/api/products', input).then((p) => safeParse<Product>(ProductSchema, p, 'product')),
+  update: (id: string, input: Partial<ProductInput>) =>
+    api.patch<unknown>(`/api/products/${id}`, input).then((p) => safeParse<Product>(ProductSchema, p, 'product')),
+  delete: (id: string) =>
+    api.delete<{ ok: boolean; error?: string }>(`/api/products/${id}`),
 }
 
 // ─── Customers ───────────────────────────────────────────────────
@@ -47,6 +52,10 @@ export const customersApi = {
   list: () => api.get<unknown[]>('/api/customers').then((arr) => arr.map((c) => safeParse<Customer>(CustomerSchema, c, 'customer'))),
   create: (input: CustomerInput) =>
     api.post<unknown>('/api/customers', input).then((c) => safeParse<Customer>(CustomerSchema, c, 'customer')),
+  update: (id: string, input: Partial<CustomerInput>) =>
+    api.patch<unknown>(`/api/customers/${id}`, input).then((c) => safeParse<Customer>(CustomerSchema, c, 'customer')),
+  delete: (id: string) =>
+    api.delete<{ ok: boolean; error?: string }>(`/api/customers/${id}`),
 }
 
 // ─── Suppliers ───────────────────────────────────────────────────
@@ -54,6 +63,10 @@ export const suppliersApi = {
   list: () => api.get<unknown[]>('/api/suppliers').then((arr) => arr.map((s) => safeParse<Supplier>(SupplierSchema, s, 'supplier'))),
   create: (input: SupplierInput) =>
     api.post<unknown>('/api/suppliers', input).then((s) => safeParse<Supplier>(SupplierSchema, s, 'supplier')),
+  update: (id: string, input: Partial<SupplierInput>) =>
+    api.patch<unknown>(`/api/suppliers/${id}`, input).then((s) => safeParse<Supplier>(SupplierSchema, s, 'supplier')),
+  delete: (id: string) =>
+    api.delete<{ ok: boolean; error?: string }>(`/api/suppliers/${id}`),
 }
 
 // ─── Warehouses ──────────────────────────────────────────────────
@@ -61,6 +74,10 @@ export const warehousesApi = {
   list: () => api.get<unknown[]>('/api/warehouses').then((arr) => arr.map((w) => safeParse<Warehouse>(WarehouseSchema, w, 'warehouse'))),
   create: (input: WarehouseInput) =>
     api.post<unknown>('/api/warehouses', input).then((w) => safeParse<Warehouse>(WarehouseSchema, w, 'warehouse')),
+  update: (id: string, input: Partial<WarehouseInput>) =>
+    api.patch<unknown>(`/api/warehouses/${id}`, input).then((w) => safeParse<Warehouse>(WarehouseSchema, w, 'warehouse')),
+  delete: (id: string) =>
+    api.delete<{ ok: boolean; error?: string }>(`/api/warehouses/${id}`),
 }
 
 // ─── Movements ───────────────────────────────────────────────────
@@ -93,6 +110,22 @@ export const inventoryApi = {
 // ─── Audit logs ──────────────────────────────────────────────────
 export const auditApi = {
   list: () => api.get<unknown[]>('/api/audit-logs').then((arr) => arr.map((a) => AuditLogSchema.parse(a) as AuditLog)),
+}
+
+// ─── Purchase Orders (Inbound) ───────────────────────────────────
+export const purchaseOrdersApi = {
+  list: () => api.get<unknown[]>('/api/purchase-orders')
+    .then((arr) => arr.map((p) => safeParse<PurchaseOrder>(PurchaseOrderSchema, p, 'purchase-order'))),
+  create: (input: {
+    supplierId: string
+    orderDate?: string
+    expectedDate?: string
+    notes?: string
+    items: { productId: string; quantity: number; unitPrice: number }[]
+  }) => api.post<unknown>('/api/purchase-orders', input)
+    .then((p) => safeParse<PurchaseOrder>(PurchaseOrderSchema, p, 'purchase-order')),
+  patch: (id: string, body: { action: 'status' | 'receive'; [k: string]: unknown }) =>
+    api.patch<{ ok?: boolean; status?: string; grnNumber?: string; error?: string }>(`/api/purchase-orders`, { id, ...body }),
 }
 
 // ─── System ──────────────────────────────────────────────────────

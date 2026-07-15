@@ -7,33 +7,39 @@ import {
 import { Button } from '@/components/ui/button'
 
 // ═══════════════════════════════════════════════════════════════
-//  CreateDialog — shared dialog shell for all master "Create" forms
-//  Uses direct button onClick (no form onSubmit) because Radix Dialog
-//  doesn't always propagate form submit reliably inside its portal.
+//  FormDialog — shared dialog shell for both Create and Edit flows.
+//  When `initial` is provided, runs in edit mode and the title defaults
+//  to "Edit X" if no title is supplied. The children (form fields) are
+//  re-mounted when the dialog opens, so callers can use `initial` to
+//  pre-populate via useEffect.
 // ═══════════════════════════════════════════════════════════════
 
-interface CreateDialogProps {
+interface FormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   title: string
   description?: string
+  /** Form contents */
   children: ReactNode
+  /** Submit handler — should throw on failure; on success, caller closes dialog */
   onSubmit: () => Promise<void>
   submitLabel?: string
+  /** Disable submit (e.g. while saving or form invalid) */
   disabled?: boolean
+  /** Override dialog width (default: max-w-lg) */
   maxWidth?: string
 }
 
-export function CreateDialog({
+export function FormDialog({
   open, onOpenChange, title, description, children,
-  onSubmit, submitLabel = 'Create', disabled, maxWidth,
-}: CreateDialogProps) {
+  onSubmit, submitLabel = 'Save', disabled, maxWidth,
+}: FormDialogProps) {
   async function handleClick() {
     if (disabled) return
     try {
       await onSubmit()
     } catch (err) {
-      console.error('[CreateDialog] onSubmit threw:', err)
+      console.error('[FormDialog] onSubmit threw:', err)
     }
   }
 
@@ -53,3 +59,6 @@ export function CreateDialog({
     </Dialog>
   )
 }
+
+/** Backwards-compatible alias — same component, kept name */
+export const CreateDialog = FormDialog
