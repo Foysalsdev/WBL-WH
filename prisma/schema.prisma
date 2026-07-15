@@ -71,6 +71,7 @@ model Product {
   movements Movement[]
   poItems   PurchaseOrderItem[]
   soItems   SalesOrderItem[]
+  dispatchItems DispatchItem[]
 }
 
 model Warehouse {
@@ -163,7 +164,7 @@ model SalesOrder {
   id              String   @id @default(cuid())
   soNumber        String   @unique
   customerId      String
-  // Workflow: draft → confirmed → picked → scanned → invoiced → dispatched → delivered | cancelled
+  // Workflow: draft → confirmed → picked → scanned → invoiced → partially_dispatched → dispatched → delivered | cancelled
   status          String   @default("draft")
   totalAmount     Float    @default(0)
   orderDate       DateTime @default(now())
@@ -180,30 +181,69 @@ model SalesOrder {
   invoiceDate     DateTime?
   invoicedBy      String?
   cartonCount     Int      @default(0)
-  // Step 4: Dispatch
-  challanNo       String?
-  vehicleNo       String?
-  driverName      String?
-  driverPhone     String?
-  dispatchedAt    DateTime?
-  // Step 5: POD (proof of delivery)
-  podStatus       String?  // pending | confirmed | failed | rescheduled
-  podReceivedBy   String?
-  podDate         DateTime?
-  podNotes        String?
+  // Steps 4 & 5 are now tracked per-dispatch (see Dispatch model)
   customer        Customer @relation(fields: [customerId], references: [id])
   items           SalesOrderItem[]
+  dispatches      Dispatch[]
 }
 
 model SalesOrderItem {
+  id            String  @id @default(cuid())
+  soId          String
+  productId     String
+  quantity      Int     // ordered
+  pickedQty     Int     @default(0) // picked from shelf
+  scannedQty    Int     @default(0) // barcode-verified
+  deliveredQty  Int     @default(0) // total delivered across all dispatches
+  unitPrice     Float
+  so            SalesOrder @relation(fields: [soId], references: [id], onDelete: Cascade)
+  product       Product  @relation(fields: [productId], references: [id])
+}
+
+// ───────────────────────────────────────────────
+//  Dispatch (partial delivery tracking)
+//  One invoice can have multiple dispatches.
+//  Each dispatch is either Transport (own vehicle) or Courier (3rd party).
+//  Each dispatch has its own POD.
+// ───────────────────────────────────────────────
+
+model Dispatch {
+  id              String   @id @default(cuid())
+  soId            String
+  dispatchNo      String   @unique  // DSP-2026-00001
+  deliveryMethod  String   // transport | courier
+  // Transport fields (when deliveryMethod = transport)
+  vehicleNo       String?
+  driverName      String?
+  driverPhone     String?
+  // Courier fields (when deliveryMethod = courier)
+  courierName     String?  // Steadfast, Pathao, REDX, etc.
+  trackingNumber  String?  // courier tracking ID
+  // Common
+  challanNo       String?
+  dispatchedAt    DateTime @default(now())
+  dispatchedBy    String?
+  notes           String?
+  totalQty        Int      @default(0) // total units in this dispatch
+  totalAmount     Float    @default(0) // value of goods in this dispatch
+  // POD (proof of delivery) — per dispatch
+  podStatus       String   @default("pending") // pending | confirmed | failed | rescheduled
+  podReceivedBy   String?
+  podDate         DateTime?
+  podNotes        String?
+  // Relations
+  so              SalesOrder @relation(fields: [soId], references: [id], onDelete: Cascade)
+  items           DispatchItem[]
+}
+
+model DispatchItem {
   id          String  @id @default(cuid())
-  soId        String
+  dispatchId  String
+  soItemId    String
   productId   String
-  quantity    Int     // ordered
-  pickedQty   Int     @default(0) // picked from shelf
-  scannedQty  Int     @default(0) // barcode-verified
+  quantity    Int     // quantity delivered in THIS dispatch
   unitPrice   Float
-  so          SalesOrder @relation(fields: [soId], references: [id], onDelete: Cascade)
+  dispatch    Dispatch @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
   product     Product  @relation(fields: [productId], references: [id])
 }
 

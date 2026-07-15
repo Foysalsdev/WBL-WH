@@ -195,8 +195,8 @@ export const PurchaseOrder = z.object({
 export type PurchaseOrder = z.infer<typeof PurchaseOrder>
 
 // ─── Sales Order (Outbound) ──────────────────────────────────────
-// Workflow: draft → confirmed → picked → scanned → invoiced → dispatched → delivered | cancelled
-export const SOStatus = z.enum(['draft', 'confirmed', 'picked', 'scanned', 'invoiced', 'dispatched', 'delivered', 'cancelled'])
+// Workflow: draft → confirmed → picked → scanned → invoiced → partially_dispatched → dispatched → delivered | cancelled
+export const SOStatus = z.enum(['draft', 'confirmed', 'picked', 'scanned', 'invoiced', 'partially_dispatched', 'dispatched', 'delivered', 'cancelled'])
 export type SOStatus = z.infer<typeof SOStatus>
 
 export const PODStatus = z.enum(['pending', 'confirmed', 'failed', 'rescheduled'])
@@ -208,12 +208,53 @@ export const SalesOrderItem = z.object({
   quantity: z.number().int().min(1),
   pickedQty: z.number().int().min(0).default(0),
   scannedQty: z.number().int().min(0).default(0),
+  deliveredQty: z.number().int().min(0).default(0),
   unitPrice: z.number().min(0),
   product: z.object({
     sku: z.string(), name: z.string(),
   }).optional(),
 })
 export type SalesOrderItem = z.infer<typeof SalesOrderItem>
+
+export const DeliveryMethod = z.enum(['transport', 'courier'])
+export type DeliveryMethod = z.infer<typeof DeliveryMethod>
+
+export const DispatchItem = z.object({
+  id: Id,
+  dispatchId: Id,
+  soItemId: Id,
+  productId: Id,
+  quantity: z.number().int().min(1),
+  unitPrice: z.number().min(0),
+  product: z.object({
+    sku: z.string(), name: z.string(),
+  }).optional(),
+})
+export type DispatchItem = z.infer<typeof DispatchItem>
+
+export const Dispatch = z.object({
+  id: Id,
+  soId: Id,
+  dispatchNo: z.string(),
+  deliveryMethod: DeliveryMethod,
+  vehicleNo: z.string().nullable().optional(),
+  driverName: z.string().nullable().optional(),
+  driverPhone: z.string().nullable().optional(),
+  courierName: z.string().nullable().optional(),
+  trackingNumber: z.string().nullable().optional(),
+  challanNo: z.string().nullable().optional(),
+  dispatchedAt: z.coerce.date(),
+  dispatchedBy: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  totalQty: z.number().int().default(0),
+  totalAmount: z.number().default(0),
+  podStatus: PODStatus.default('pending'),
+  podReceivedBy: z.string().nullable().optional(),
+  podDate: z.coerce.date().nullable().optional(),
+  podNotes: z.string().nullable().optional(),
+  items: z.array(DispatchItem).optional(),
+})
+export type Dispatch = z.infer<typeof Dispatch>
 
 export const SalesOrder = z.object({
   id: Id,
@@ -235,21 +276,12 @@ export const SalesOrder = z.object({
   invoiceDate: z.coerce.date().nullable().optional(),
   invoicedBy: z.string().nullable().optional(),
   cartonCount: z.number().int().default(0),
-  // Step 4: Dispatch
-  challanNo: z.string().nullable().optional(),
-  vehicleNo: z.string().nullable().optional(),
-  driverName: z.string().nullable().optional(),
-  driverPhone: z.string().nullable().optional(),
-  dispatchedAt: z.coerce.date().nullable().optional(),
-  // Step 5: POD
-  podStatus: PODStatus.nullable().optional(),
-  podReceivedBy: z.string().nullable().optional(),
-  podDate: z.coerce.date().nullable().optional(),
-  podNotes: z.string().nullable().optional(),
+  // Steps 4 & 5 tracked per-dispatch
   customer: z.object({
     id: Id, code: z.string(), name: z.string(), city: z.string().nullable().optional(),
   }).optional(),
   items: z.array(SalesOrderItem).optional(),
+  dispatches: z.array(Dispatch).optional(),
 })
 export type SalesOrder = z.infer<typeof SalesOrder>
 

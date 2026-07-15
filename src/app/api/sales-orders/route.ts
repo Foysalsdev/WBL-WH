@@ -4,7 +4,11 @@ import { db } from '@/lib/db'
 // GET /api/sales-orders
 export async function GET() {
   const sos = await db.salesOrder.findMany({
-    include: { customer: true, items: { include: { product: true } } },
+    include: {
+      customer: true,
+      items: { include: { product: true } },
+      dispatches: { include: { items: { include: { product: true } } } },
+    },
     orderBy: { orderDate: 'desc' },
   })
   return NextResponse.json(sos)
@@ -41,7 +45,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(so, { status: 201 })
 }
 
-// PATCH /api/sales-orders — 5-step workflow: confirm, pick, scan, invoice, dispatch, pod
+// PATCH /api/sales-orders — 5-step workflow with partial dispatch
 export async function PATCH(req: NextRequest) {
   const body = await req.json()
   const { id, action } = body
@@ -118,65 +122,182 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ ok: true, status: 'invoiced', invoiceNo: finalInvoiceNo })
   }
 
-  // ─── action: 'dispatch' — Step 4: ship out with vehicle/driver ───
+  // ─── action: 'dispatch' — Step 4: partial dispatch with Transport/Courier ───
+  // Creates a Dispatch record, deducts stock for delivered items only,
+  // updates deliveredQty on SO items, and changes SO status to
+  // 'partially_dispatched' or 'dispatched' depending on whether all
+  // items are fully delivered.
   if (action === 'dispatch') {
-    const { challanNo, vehicleNo, driverName, driverPhone } = body
+    const {
+      deliveryMethod,      // 'transport' | 'courier'
+      vehicleNo, driverName, driverPhone,     // transport fields
+      courierName, trackingNumber,             // courier fields
+      challanNo, dispatchedBy, notes,
+      items: dispatchItems,                    // [{ soItemId, productId, quantity, unitPrice }]
+    } = body
+
     const so = await db.salesOrder.findUnique({ where: { id }, include: { items: true } })
     if (!so) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    if (so.status !== 'invoiced') {
-      return NextResponse.json({ error: `Cannot dispatch in '${so.status}' status — must be 'invoiced'` }, { status: 400 })
+    if (so.status !== 'invoiced' && so.status !== 'partially_dispatched') {
+      return NextResponse.json({ error: `Cannot dispatch in '${so.status}' status — must be 'invoiced' or 'partially_dispatched'` }, { status: 400 })
     }
-    if (!vehicleNo) return NextResponse.json({ error: 'Vehicle number required' }, { status: 400 })
+    if (!deliveryMethod) return NextResponse.json({ error: 'deliveryMethod is required' }, { status: 400 })
+    if (deliveryMethod === 'transport' && !vehicleNo) {
+      return NextResponse.json({ error: 'Vehicle number required for transport delivery' }, { status: 400 })
+    }
+    if (deliveryMethod === 'courier' && !courierName) {
+      return NextResponse.json({ error: 'Courier name required for courier delivery' }, { status: 400 })
+    }
+    if (!dispatchItems || dispatchItems.length === 0) {
+      return NextResponse.json({ error: 'At least one item required for dispatch' }, { status: 400 })
+    }
 
+    // Validate dispatch quantities against remaining (picked - already delivered)
+    for (const di of dispatchItems) {
+      const soItem = so.items.find((it) => it.id === di.soItemId)
+      if (!soItem) return NextResponse.json({ error: `SO item ${di.soItemId} not found` }, { status: 400 })
+      const remaining = (soItem.pickedQty || soItem.quantity) - soItem.deliveredQty
+      if (Number(di.quantity) > remaining) {
+        return NextResponse.json({ error: `Cannot dispatch ${di.quantity} units — only ${remaining} remaining for ${soItem.productId}` }, { status: 400 })
+      }
+    }
+
+    // Generate dispatch number and challan
     const year = new Date().getFullYear()
+    const dspCount = await db.dispatch.count({ where: { dispatchNo: { startsWith: `DSP-${year}-` } } })
+    const dispatchNo = `DSP-${year}-${String(dspCount + 1).padStart(5, '0')}`
     const finalChallan = challanNo || `CH-${year}-${String(Math.floor(Math.random() * 9000) + 1000)}`
 
-    // Deduct stock on dispatch
-    for (const it of so.items) {
-      const deduct = it.pickedQty || it.quantity
-      const stock = await db.stock.findUnique({ where: { productId: it.productId } })
-      if (stock) await db.stock.update({ where: { productId: it.productId }, data: { quantity: Math.max(0, stock.quantity - deduct) } })
-      await db.movement.create({ data: { productId: it.productId, type: 'OUT', quantity: -deduct, reference: so.soNumber, notes: `Dispatched on ${finalChallan}` } })
-    }
+    const totalQty = dispatchItems.reduce((s: number, di: any) => s + Number(di.quantity), 0)
+    const totalAmount = dispatchItems.reduce((s: number, di: any) => s + Number(di.quantity) * Number(di.unitPrice), 0)
 
-    await db.salesOrder.update({
-      where: { id },
+    // Create the Dispatch record with items
+    const dispatch = await db.dispatch.create({
       data: {
-        status: 'dispatched',
+        soId: id,
+        dispatchNo,
+        deliveryMethod,
+        vehicleNo: deliveryMethod === 'transport' ? vehicleNo : null,
+        driverName: deliveryMethod === 'transport' ? (driverName || null) : null,
+        driverPhone: deliveryMethod === 'transport' ? (driverPhone || null) : null,
+        courierName: deliveryMethod === 'courier' ? courierName : null,
+        trackingNumber: deliveryMethod === 'courier' ? (trackingNumber || null) : null,
         challanNo: finalChallan,
-        vehicleNo,
-        driverName: driverName || null,
-        driverPhone: driverPhone || null,
-        dispatchedAt: new Date(),
-        podStatus: 'pending',
+        dispatchedBy: dispatchedBy || null,
+        notes: notes || null,
+        totalQty,
+        totalAmount,
+        items: {
+          create: dispatchItems.map((di: any) => ({
+            soItemId: di.soItemId,
+            productId: di.productId,
+            quantity: Number(di.quantity),
+            unitPrice: Number(di.unitPrice),
+          })),
+        },
       },
     })
-    await db.auditLog.create({ data: { action: 'POST', entity: 'SalesOrder', entityId: so.id, userName: 'System', details: `${so.soNumber} dispatched on ${finalChallan}` } })
-    return NextResponse.json({ ok: true, status: 'dispatched', challanNo: finalChallan })
+
+    // Update deliveredQty on SO items + deduct stock + write movements
+    for (const di of dispatchItems) {
+      const qty = Number(di.quantity)
+      // Update SO item deliveredQty
+      const soItem = so.items.find((it) => it.id === di.soItemId)
+      if (soItem) {
+        await db.salesOrderItem.update({
+          where: { id: di.soItemId },
+          data: { deliveredQty: soItem.deliveredQty + qty },
+        })
+      }
+      // Deduct stock
+      const stock = await db.stock.findUnique({ where: { productId: di.productId } })
+      if (stock) {
+        await db.stock.update({
+          where: { productId: di.productId },
+          data: { quantity: Math.max(0, stock.quantity - qty) },
+        })
+      }
+      // Write movement
+      await db.movement.create({
+        data: {
+          productId: di.productId,
+          type: 'OUT',
+          quantity: -qty,
+          reference: so.soNumber,
+          notes: `Dispatch ${dispatchNo} via ${deliveryMethod}`,
+        },
+      })
+    }
+
+    // Check if all items are now fully delivered
+    const refreshedItems = await db.salesOrderItem.findMany({ where: { soId: id } })
+    const allDelivered = refreshedItems.every((it) => it.deliveredQty >= (it.pickedQty || it.quantity))
+    const newStatus = allDelivered ? 'dispatched' : 'partially_dispatched'
+
+    await db.salesOrder.update({ where: { id }, data: { status: newStatus } })
+
+    await db.auditLog.create({
+      data: {
+        action: 'POST', entity: 'Dispatch', entityId: dispatch.id, userName: dispatchedBy || 'System',
+        details: `${dispatchNo} created for ${so.soNumber} — ${totalQty} units via ${deliveryMethod}`,
+      },
+    })
+
+    return NextResponse.json({
+      ok: true,
+      dispatchNo,
+      challanNo: finalChallan,
+      status: newStatus,
+      allDelivered,
+    })
   }
 
-  // ─── action: 'pod' — Step 5: proof of delivery ───
+  // ─── action: 'pod' — Step 5: per-dispatch POD ───
+  // Now operates on a Dispatch record, not the SO directly
   if (action === 'pod') {
-    const { podStatus, podReceivedBy, podNotes } = body
-    const so = await db.salesOrder.findUnique({ where: { id } })
-    if (!so) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    if (so.status !== 'dispatched') {
-      return NextResponse.json({ error: `Cannot record POD in '${so.status}' status — must be 'dispatched'` }, { status: 400 })
+    const { dispatchId, podStatus, podReceivedBy, podNotes } = body
+
+    const dispatch = await db.dispatch.findUnique({
+      where: { id: dispatchId },
+      include: { so: true },
+    })
+    if (!dispatch) return NextResponse.json({ error: 'Dispatch not found' }, { status: 404 })
+    if (dispatch.podStatus !== 'pending') {
+      return NextResponse.json({ error: `POD already recorded for ${dispatch.dispatchNo}` }, { status: 400 })
     }
-    const newStatus = podStatus === 'confirmed' ? 'delivered' : so.status
-    await db.salesOrder.update({
-      where: { id },
+
+    await db.dispatch.update({
+      where: { id: dispatchId },
       data: {
-        status: newStatus,
         podStatus,
         podReceivedBy: podReceivedBy || null,
         podDate: new Date(),
         podNotes: podNotes || null,
-        ...(podStatus === 'confirmed' ? { deliveryDate: new Date() } : {}),
       },
     })
-    await db.auditLog.create({ data: { action: 'CONFIRM', entity: 'SalesOrder', entityId: so.id, userName: podReceivedBy || 'System', details: `${so.soNumber} POD ${podStatus}` } })
-    return NextResponse.json({ ok: true, status: newStatus, podStatus })
+
+    // If this dispatch is confirmed, check if ALL dispatches for this SO are confirmed
+    // If so, mark the SO as 'delivered'
+    if (podStatus === 'confirmed') {
+      const allDispatches = await db.dispatch.findMany({ where: { soId: dispatch.soId } })
+      const allConfirmed = allDispatches.every((d) => d.podStatus === 'confirmed')
+      if (allConfirmed) {
+        await db.salesOrder.update({
+          where: { id: dispatch.soId },
+          data: { status: 'delivered', deliveryDate: new Date() },
+        })
+      }
+    }
+
+    await db.auditLog.create({
+      data: {
+        action: 'CONFIRM', entity: 'Dispatch', entityId: dispatchId,
+        userName: podReceivedBy || 'System',
+        details: `${dispatch.dispatchNo} POD ${podStatus}`,
+      },
+    })
+
+    return NextResponse.json({ ok: true, podStatus })
   }
 
   return NextResponse.json({ error: 'unknown action' }, { status: 400 })
