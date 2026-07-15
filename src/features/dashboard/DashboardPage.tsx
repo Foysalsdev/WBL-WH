@@ -65,6 +65,22 @@ export function DashboardPage() {
         }
       />
 
+      {/* Brand banner */}
+      <div className="relative overflow-hidden rounded-xl border bg-gradient-to-r from-primary/10 to-primary/5">
+        <div className="flex items-center justify-between gap-4 p-4 md:p-6">
+          <div className="flex-1 min-w-0">
+            <img src="/whirlpool-logo.svg" alt="Whirlpool" className="h-8 md:h-10 mb-2" style={{ objectFit: 'contain' }} />
+            <p className="text-sm text-muted-foreground">Official Warehouse Management System for Whirlpool Bangladesh operations.</p>
+          </div>
+          <img
+            src="/whirlpool-banner.png"
+            alt="Whirlpool Bangladesh"
+            className="h-20 md:h-28 w-auto rounded-lg shrink-0 hidden sm:block"
+            style={{ objectFit: 'contain' }}
+          />
+        </div>
+      </div>
+
       {/* Primary KPIs */}
       <section className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <StatCard label="Stock Value" value={bdt(kpi.totalValue)} hint={`${num(kpi.totalUnits)} units on-hand`} icon={Wallet} tone="success" />

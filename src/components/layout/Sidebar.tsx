@@ -152,6 +152,17 @@ function SidebarContent({
           </div>
         </div>
       )}
+
+      {/* Whirlpool banner — shown when sidebar is expanded */}
+      {!collapsed && (
+        <div className="p-3 border-t border-sidebar-border">
+          <img
+            src="/whirlpool-banner.png"
+            alt="Whirlpool Bangladesh"
+            className="w-full rounded-lg opacity-80 hover:opacity-100 transition-opacity"
+          />
+        </div>
+      )}
     </div>
   )
 }
