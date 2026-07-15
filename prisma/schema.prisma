@@ -1,0 +1,189 @@
+// 3i Logistics — ERP + WMS  (better-edition)
+// Next.js 16 + Prisma (SQLite) + shadcn/ui
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────────────────────────
+//  People
+// ───────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      String   @default("staff") // admin | manager | staff
+  avatar    String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  city      String?
+  createdAt DateTime @default(now())
+  orders    SalesOrder[]
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  city      String?
+  createdAt DateTime @default(now())
+  orders    PurchaseOrder[]
+}
+
+// ───────────────────────────────────────────────
+//  Catalog & locations
+// ───────────────────────────────────────────────
+
+model Product {
+  id           String   @id @default(cuid())
+  sku          String   @unique
+  name         String
+  category     String?
+  description  String?
+  unit         String   @default("pcs")
+  barcode      String?
+  costPrice    Float    @default(0)
+  salePrice    Float    @default(0)
+  reorderLevel Int      @default(10)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  stock     Stock?
+  movements Movement[]
+  poItems   PurchaseOrderItem[]
+  soItems   SalesOrderItem[]
+}
+
+model Warehouse {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  address   String?
+  city      String?
+  capacity  Int      @default(0)
+  createdAt DateTime @default(now())
+  locations Location[]
+}
+
+model Location {
+  id          String   @id @default(cuid())
+  warehouseId String
+  zone        String
+  rack        String
+  bin         String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+// ───────────────────────────────────────────────
+//  Inventory
+// ───────────────────────────────────────────────
+
+model Stock {
+  id          String   @id @default(cuid())
+  productId   String   @unique
+  quantity    Int      @default(0)
+  reserved    Int      @default(0)
+  damaged     Int      @default(0)
+  updatedAt   DateTime @updatedAt
+  product     Product  @relation(fields: [productId], references: [id])
+}
+
+model Movement {
+  id         String   @id @default(cuid())
+  productId  String
+  type       String   // IN | OUT | ADJUST | TRANSFER
+  quantity   Int      // signed (+/-)
+  reference  String?
+  notes      String?
+  createdAt  DateTime @default(now())
+  product    Product  @relation(fields: [productId], references: [id])
+}
+
+// ───────────────────────────────────────────────
+//  Procurement (Inbound)
+// ───────────────────────────────────────────────
+
+model PurchaseOrder {
+  id           String   @id @default(cuid())
+  poNumber     String   @unique
+  supplierId   String
+  status       String   @default("draft") // draft | ordered | received | cancelled
+  totalAmount  Float    @default(0)
+  orderDate    DateTime @default(now())
+  expectedDate DateTime?
+  receivedDate DateTime?
+  notes        String?
+  supplier     Supplier @relation(fields: [supplierId], references: [id])
+  items        PurchaseOrderItem[]
+}
+
+model PurchaseOrderItem {
+  id         String  @id @default(cuid())
+  poId       String
+  productId  String
+  quantity   Int
+  unitPrice  Float
+  po         PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id])
+}
+
+// ───────────────────────────────────────────────
+//  Sales (Outbound)
+// ───────────────────────────────────────────────
+
+model SalesOrder {
+  id           String   @id @default(cuid())
+  soNumber     String   @unique
+  customerId   String
+  status       String   @default("draft") // draft | confirmed | picked | shipped | delivered | cancelled
+  totalAmount  Float    @default(0)
+  orderDate    DateTime @default(now())
+  deliveryDate DateTime?
+  notes        String?
+  customer     Customer @relation(fields: [customerId], references: [id])
+  items        SalesOrderItem[]
+}
+
+model SalesOrderItem {
+  id         String  @id @default(cuid())
+  soId       String
+  productId  String
+  quantity   Int
+  unitPrice  Float
+  so         SalesOrder @relation(fields: [soId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id])
+}
+
+// ───────────────────────────────────────────────
+//  Audit trail
+// ───────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // CREATE | UPDATE | DELETE | POST
+  entity    String
+  entityId  String?
+  userName  String?
+  details   String?
+  createdAt DateTime @default(now())
+}
