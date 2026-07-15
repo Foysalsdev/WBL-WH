@@ -1,47 +1,52 @@
 'use client'
-import { useEffect, useState } from 'react'
+
 import {
-  Boxes, Wallet, AlertTriangle, ShoppingCart, Package, Users, Building2,
-  ArrowDownLeft, ArrowUpRight, Activity, TrendingUp, Ban,
+  Wallet, AlertTriangle, ShoppingCart, TrendingUp, Boxes, Users, Building2,
+  Package, ArrowDownLeft, ArrowUpRight, Activity, ShieldCheck, Ban, Clock,
 } from 'lucide-react'
 import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
-  Area, AreaChart, PieChart, Pie, Cell, Legend,
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
+  PieChart, Pie, Cell, Legend,
 } from 'recharts'
-import { PageHeader, StatCard, MovementTypePill } from '@/components/erp/primitives'
+import { PageHeader, StatCard, MovementPill, StatusBadge, EmptyState } from '@/components/system'
+import { PageHeaderSkeleton, StatCardGridSkeleton, ChartSkeleton } from '@/components/system/skeletons'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { fmtBDT, fmtNum, fmtDateTime, timeAgo } from '@/lib/format'
-import { useApp } from '@/store/app'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { useDashboard } from './useDashboard'
+import { useUI } from '@/lib/store/ui'
+import { bdt, num, timeAgo, dateTime } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 const PIE_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)']
 
 export function DashboardPage() {
-  const [data, setData] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const setActive = useApp((s) => s.setActive)
+  const { data, isLoading, isError, refetch } = useDashboard()
+  const setActiveModule = useUI((s) => s.setActiveModule)
 
-  useEffect(() => {
-    fetch('/api/dashboard').then((r) => r.json()).then((d) => {
-      setData(d)
-      setLoading(false)
-    })
-  }, [])
-
-  if (loading || !data) {
+  if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
-        <Skeleton className="h-12 w-64" />
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
-        </div>
+      <div className="p-6 max-w-[1600px] mx-auto space-y-6">
+        <PageHeaderSkeleton />
+        <StatCardGridSkeleton count={4} />
         <div className="grid gap-4 lg:grid-cols-3">
-          <Skeleton className="h-80 rounded-xl lg:col-span-2" />
-          <Skeleton className="h-80 rounded-xl" />
+          <ChartSkeleton className="lg:col-span-2" />
+          <ChartSkeleton />
         </div>
+      </div>
+    )
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="p-6">
+        <EmptyState
+          icon={AlertTriangle}
+          title="Couldn't load dashboard"
+          description="There was a problem fetching live data. Try again."
+          action={<Button onClick={() => refetch()}>Retry</Button>}
+        />
       </div>
     )
   }
@@ -53,29 +58,33 @@ export function DashboardPage() {
       <PageHeader
         title="Whirlpool Bangladesh · Warehouse Dashboard"
         description="Live snapshot of inbound, outbound, stock and dispatch operations."
+        actions={
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <Activity className="h-4 w-4 mr-1.5" />Refresh
+          </Button>
+        }
       />
 
-      {/* KPI cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Stock Value" value={fmtBDT(kpi.totalValue)} hint={`${fmtNum(kpi.totalUnits)} units on-hand`} icon={<Wallet className="h-5 w-5" />} tone="success" />
-        <StatCard label="Total Sales" value={fmtBDT(kpi.totalSales)} hint={`${kpi.openSOs} open SOs`} icon={<TrendingUp className="h-5 w-5" />} tone="info" />
-        <StatCard label="Total Purchases" value={fmtBDT(kpi.totalPurchase)} hint={`${kpi.openPOs} open POs`} icon={<ShoppingCart className="h-5 w-5" />} tone="info" />
-        <StatCard label="Low-Stock Items" value={fmtNum(kpi.lowStockCount)} hint={`${kpi.damagedUnits} damaged units`} icon={<AlertTriangle className="h-5 w-5" />} tone={kpi.lowStockCount > 0 ? 'warning' : 'default'} />
-      </div>
+      {/* Primary KPIs */}
+      <section className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Stock Value" value={bdt(kpi.totalValue)} hint={`${num(kpi.totalUnits)} units on-hand`} icon={Wallet} tone="success" />
+        <StatCard label="Total Sales" value={bdt(kpi.totalSales)} hint={`${kpi.openSOs} open SOs`} icon={TrendingUp} tone="info" />
+        <StatCard label="Total Purchases" value={bdt(kpi.totalPurchase)} hint={`${kpi.openPOs} open POs`} icon={ShoppingCart} tone="info" />
+        <StatCard label="Low-Stock SKUs" value={num(kpi.lowStockCount)} hint={`${kpi.damagedUnits} damaged units`} icon={AlertTriangle} tone={kpi.lowStockCount > 0 ? 'warning' : 'default'} />
+      </section>
 
-      {/* Mini stats */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="Products" value={fmtNum(kpi.products)} icon={<Boxes className="h-4 w-4" />} />
-        <StatCard label="Customers" value={fmtNum(kpi.customers)} icon={<Users className="h-4 w-4" />} />
-        <StatCard label="Suppliers" value={fmtNum(kpi.suppliers)} icon={<Package className="h-4 w-4" />} />
-        <StatCard label="Warehouses" value={fmtNum(kpi.warehouses)} icon={<Building2 className="h-4 w-4" />} />
-        <StatCard label="Reserved Units" value={fmtNum(kpi.reservedUnits)} icon={<Ban className="h-4 w-4" />} tone="warning" />
-        <StatCard label="Damaged Units" value={fmtNum(kpi.damagedUnits)} icon={<AlertTriangle className="h-4 w-4" />} tone="destructive" />
-      </div>
+      {/* Secondary KPIs */}
+      <section className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+        <StatCard label="Products" value={num(kpi.products)} icon={Boxes} />
+        <StatCard label="Dealers" value={num(kpi.customers)} icon={Users} />
+        <StatCard label="Sourcing" value={num(kpi.suppliers)} icon={Package} />
+        <StatCard label="Warehouses" value={num(kpi.warehouses)} icon={Building2} />
+        <StatCard label="Reserved" value={num(kpi.reservedUnits)} icon={Ban} tone="warning" />
+        <StatCard label="Damaged" value={num(kpi.damagedUnits)} icon={AlertTriangle} tone="destructive" />
+      </section>
 
-      {/* Charts row */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* In/Out trend */}
+      {/* Charts */}
+      <section className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-base">Stock Movements — Last 14 days</CardTitle>
@@ -106,7 +115,6 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Category pie */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Stock Value by Category</CardTitle>
@@ -121,7 +129,7 @@ export function DashboardPage() {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(v: any) => fmtBDT(v)}
+                  formatter={(v: any) => bdt(v)}
                   contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
                 />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
@@ -129,10 +137,10 @@ export function DashboardPage() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
-      </div>
+      </section>
 
-      {/* Bottom row — recent movements + low stock */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* Activity + Alerts */}
+      <section className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -140,28 +148,39 @@ export function DashboardPage() {
                 <CardTitle className="text-base flex items-center gap-2"><Activity className="h-4 w-4 text-primary" />Recent Stock Movements</CardTitle>
                 <CardDescription>Latest activity across the warehouse</CardDescription>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setActive('inventory')}>View all</Button>
+              <Button variant="ghost" size="sm" onClick={() => setActiveModule('inventory')} disabled>View all</Button>
             </div>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-72 pr-3">
               <ul className="space-y-2">
-                {recent.movements.map((m: any) => (
+                {recent.movements.map((m) => (
                   <li key={m.id} className="flex items-center gap-3 rounded-lg border p-2.5 hover:bg-muted/50 transition-colors">
-                    <div className={`grid place-items-center h-9 w-9 rounded-lg ${m.type === 'IN' ? 'bg-emerald-500/10 text-emerald-600' : m.type === 'OUT' ? 'bg-rose-500/10 text-rose-600' : 'bg-amber-500/10 text-amber-600'}`}>
-                      {m.type === 'IN' ? <ArrowDownLeft className="h-4 w-4" /> : m.type === 'OUT' ? <ArrowUpRight className="h-4 w-4" /> : <Activity className="h-4 w-4" />}
+                    <div className={cn(
+                      'grid place-items-center h-9 w-9 rounded-lg shrink-0',
+                      m.type === 'IN' && 'bg-emerald-500/10 text-emerald-600',
+                      m.type === 'OUT' && 'bg-rose-500/10 text-rose-600',
+                      m.type === 'ADJUST' && 'bg-amber-500/10 text-amber-600',
+                      m.type === 'TRANSFER' && 'bg-sky-500/10 text-sky-600',
+                    )}>
+                      {m.type === 'IN' ? <ArrowDownLeft className="h-4 w-4" /> :
+                       m.type === 'OUT' ? <ArrowUpRight className="h-4 w-4" /> :
+                       <Activity className="h-4 w-4" />}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{m.productName}</p>
-                      <p className="text-xs text-muted-foreground truncate">{m.productSku} · {m.reference}</p>
+                      <p className="text-sm font-medium truncate">{m.product?.name || 'Product'}</p>
+                      <p className="text-xs text-muted-foreground truncate">{m.product?.sku} · {m.reference}</p>
                     </div>
                     <div className="text-right">
-                      <p className={`text-sm font-semibold tabular-nums ${m.quantity > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      <p className={cn(
+                        'text-sm font-semibold tabular-nums',
+                        m.quantity > 0 ? 'text-emerald-600' : 'text-rose-600',
+                      )}>
                         {m.quantity > 0 ? '+' : ''}{m.quantity}
                       </p>
                       <p className="text-[11px] text-muted-foreground">{timeAgo(m.createdAt)}</p>
                     </div>
-                    <MovementTypePill type={m.type} />
+                    <MovementPill type={m.type} />
                   </li>
                 ))}
               </ul>
@@ -176,18 +195,18 @@ export function DashboardPage() {
                 <CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-500" />Low-Stock Alerts</CardTitle>
                 <CardDescription>Items at or below reorder level</CardDescription>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setActive('inbound')}>Reorder</Button>
+              <Button variant="ghost" size="sm" onClick={() => setActiveModule('inbound')} disabled>Reorder</Button>
             </div>
           </CardHeader>
           <CardContent>
             {lowStock.length === 0 ? (
-              <div className="py-10 text-center text-sm text-muted-foreground">All stock levels are healthy.</div>
+              <EmptyState icon={ShieldCheck} title="All stock levels healthy" description="No SKUs below reorder level." />
             ) : (
               <ScrollArea className="h-72 pr-3">
                 <ul className="space-y-2">
-                  {lowStock.map((p: any) => (
+                  {lowStock.map((p) => (
                     <li key={p.id} className="flex items-center gap-3 rounded-lg border p-2.5 hover:bg-muted/50 transition-colors">
-                      <div className="grid place-items-center h-9 w-9 rounded-lg bg-amber-500/10 text-amber-600">
+                      <div className="grid place-items-center h-9 w-9 rounded-lg bg-amber-500/10 text-amber-600 shrink-0">
                         <AlertTriangle className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -206,22 +225,22 @@ export function DashboardPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </section>
 
-      {/* Audit activity */}
+      {/* Audit trail */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2"><Activity className="h-4 w-4 text-primary" />Recent Audit Activity</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><Clock className="h-4 w-4 text-primary" />Recent Audit Activity</CardTitle>
           <CardDescription>System action trail — last 8 events</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-2 md:grid-cols-2">
-            {recent.audit.map((a: any) => (
+            {recent.audit.map((a) => (
               <div key={a.id} className="flex items-start gap-3 rounded-lg border p-2.5">
-                <Badge variant="outline" className="font-mono text-[10px] uppercase">{a.action}</Badge>
+                <Badge variant="outline" className="font-mono text-[10px] uppercase shrink-0">{a.action}</Badge>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm truncate">{a.details}</p>
-                  <p className="text-xs text-muted-foreground">{a.userName} · {fmtDateTime(a.createdAt)}</p>
+                  <p className="text-xs text-muted-foreground">{a.userName} · {dateTime(a.createdAt)}</p>
                 </div>
               </div>
             ))}

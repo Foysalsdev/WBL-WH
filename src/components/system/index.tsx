@@ -1,0 +1,176 @@
+'use client'
+
+import { type ReactNode } from 'react'
+import { LucideIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+// ═══════════════════════════════════════════════════════════════
+//  PageHeader — consistent page top with title, description, actions
+// ═══════════════════════════════════════════════════════════════
+
+interface PageHeaderProps {
+  title: string
+  description?: string
+  icon?: LucideIcon
+  actions?: ReactNode
+  /** Optional breadcrumb trail above the title */
+  breadcrumb?: ReactNode
+}
+
+export function PageHeader({ title, description, icon: Icon, actions, breadcrumb }: PageHeaderProps) {
+  return (
+    <div className="mb-6 animate-fade-in">
+      {breadcrumb && <div className="mb-2 text-sm text-muted-foreground">{breadcrumb}</div>}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          {Icon && (
+            <div className="grid place-items-center h-11 w-11 rounded-xl bg-primary/10 text-primary shrink-0">
+              <Icon className="h-5 w-5" />
+            </div>
+          )}
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight truncate">{title}</h1>
+            {description && <p className="text-sm text-muted-foreground mt-0.5">{description}</p>}
+          </div>
+        </div>
+        {actions && <div className="flex flex-wrap items-center gap-2 shrink-0">{actions}</div>}
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  StatCard — KPI tile with optional trend & tone
+// ═══════════════════════════════════════════════════════════════
+
+type StatTone = 'default' | 'primary' | 'success' | 'warning' | 'destructive' | 'info'
+
+const TONE_STYLES: Record<StatTone, string> = {
+  default:    'bg-muted text-foreground',
+  primary:    'bg-primary/10 text-primary',
+  success:    'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  warning:    'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  destructive:'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+  info:       'bg-sky-500/10 text-sky-600 dark:text-sky-400',
+}
+
+interface StatCardProps {
+  label: string
+  value: ReactNode
+  hint?: ReactNode
+  icon?: LucideIcon
+  tone?: StatTone
+  /** Optional trend indicator like "+12% vs last week" */
+  trend?: { value: string; direction: 'up' | 'down' | 'flat' }
+}
+
+export function StatCard({ label, value, hint, icon: Icon, tone = 'default', trend }: StatCardProps) {
+  return (
+    <div className="group relative rounded-xl border bg-card p-5 transition-shadow hover:shadow-md">
+      <div className="flex items-start justify-between mb-3">
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        {Icon && (
+          <div className={cn('grid place-items-center h-9 w-9 rounded-lg transition-transform group-hover:scale-105', TONE_STYLES[tone])}>
+            <Icon className="h-4 w-4" />
+          </div>
+        )}
+      </div>
+      <p className="text-2xl font-semibold tracking-tight tabular-nums">{value}</p>
+      <div className="flex items-center gap-2 mt-1.5">
+        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+        {trend && (
+          <span className={cn(
+            'text-xs font-medium tabular-nums',
+            trend.direction === 'up' && 'text-emerald-600',
+            trend.direction === 'down' && 'text-rose-600',
+            trend.direction === 'flat' && 'text-muted-foreground',
+          )}>
+            {trend.direction === 'up' && '↑'}{trend.direction === 'down' && '↓'}{trend.value}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EmptyState — friendly placeholder for empty collections
+// ═══════════════════════════════════════════════════════════════
+
+interface EmptyStateProps {
+  icon?: LucideIcon
+  title: string
+  description?: string
+  action?: ReactNode
+}
+
+export function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps) {
+  return (
+    <div className="flex flex-col items-center justify-center text-center py-16 px-6 animate-fade-in">
+      {Icon && (
+        <div className="grid place-items-center h-14 w-14 rounded-full bg-muted text-muted-foreground mb-4">
+          <Icon className="h-6 w-6" />
+        </div>
+      )}
+      <p className="text-base font-medium">{title}</p>
+      {description && <p className="text-sm text-muted-foreground mt-1 max-w-sm">{description}</p>}
+      {action && <div className="mt-5">{action}</div>}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  StatusBadge — color-coded status pill for documents & orders
+// ═══════════════════════════════════════════════════════════════
+
+const STATUS_STYLES: Record<string, string> = {
+  // PO statuses
+  draft:       'bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20',
+  ordered:     'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
+  partial:     'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  received:    'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+  // SO statuses
+  confirmed:   'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
+  picked:      'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20',
+  packed:      'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
+  shipped:     'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  delivered:   'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+  cancelled:   'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+  // POD
+  pending:     'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  failed:      'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+  rescheduled: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20',
+}
+
+export function StatusBadge({ status, size = 'md' }: { status: string; size?: 'sm' | 'md' }) {
+  const cls = STATUS_STYLES[status] || 'bg-muted text-muted-foreground border-border'
+  return (
+    <span className={cn(
+      'inline-flex items-center rounded-full border font-medium capitalize',
+      size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-0.5 text-xs',
+      cls,
+    )}>
+      {status}
+    </span>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MovementPill — typed pill for stock movements
+// ═══════════════════════════════════════════════════════════════
+
+const MOVEMENT_STYLES: Record<string, string> = {
+  IN:       'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+  OUT:      'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+  ADJUST:   'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  TRANSFER: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
+}
+
+export function MovementPill({ type }: { type: string }) {
+  const cls = MOVEMENT_STYLES[type] || 'bg-muted text-muted-foreground border-border'
+  return (
+    <span className={cn('inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold', cls)}>
+      {type}
+    </span>
+  )
+}

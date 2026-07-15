@@ -3,6 +3,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ═══════════════════════════════════════════════════════════════
+   WHIRLPOOL BD WMS · Design System v2
+   ═══════════════════════════════════════════════════════════════
+   Brand tokens extracted from whirlpool-bangladesh.com
+   ═══════════════════════════════════════════════════════════════ */
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -44,47 +50,110 @@
 }
 
 :root {
+  /* Radius scale */
   --radius: 0.5rem;
-  /* Whirlpool BD brand palette (extracted from whirlpool-bangladesh.com) */
+
+  /* ─── Brand palette (extracted from whirlpool-bangladesh.com) ─── */
   --whp-blue:        #0c389f;
-  --whp-blue-light:  #2a6dbf;
-  --whp-blue-bright: #134cd8;
+  --whp-blue-600:    #0a328c;
+  --whp-blue-700:    #082a78;
+  --whp-blue-500:    #1f4ab3;
+  --whp-blue-400:    #3d62c8;
+  --whp-blue-300:    #6b8ad8;
+  --whp-blue-200:    #a3b9e8;
+  --whp-blue-100:    #d3ddf3;
+  --whp-blue-50:     #eef2fa;
+
   --whp-gold:        #eeb111;
-  --whp-gold-light:  #f6c64e;
+  --whp-gold-600:    #d99d0a;
+  --whp-gold-700:    #b88408;
+  --whp-gold-400:    #f3c43e;
+  --whp-gold-200:    #fbe2a3;
+  --whp-gold-100:    #fdf1cf;
+  --whp-gold-50:     #fef8e9;
+
   --whp-navy:        #142032;
+  --whp-navy-700:    #0f1929;
+  --whp-navy-800:    #0a1320;
   --whp-slate:       #3d5980;
 
+  /* ─── Semantic tokens ─── */
   --background: oklch(0.99 0.002 240);
   --foreground: oklch(0.18 0.02 240);
+
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.18 0.02 240);
+
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.02 240);
-  --primary: oklch(0.43 0.18 264);          /* #0c389f */
+
+  /* Primary = Whirlpool Blue */
+  --primary: oklch(0.43 0.18 264);
   --primary-foreground: oklch(0.99 0 0);
+
   --secondary: oklch(0.96 0.012 250);
   --secondary-foreground: oklch(0.22 0.04 264);
+
   --muted: oklch(0.965 0.005 240);
   --muted-foreground: oklch(0.50 0.025 260);
-  --accent: oklch(0.83 0.16 84);            /* #eeb111 gold */
+
+  /* Accent = Gold */
+  --accent: oklch(0.83 0.16 84);
   --accent-foreground: oklch(0.20 0.04 84);
+
   --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --success: oklch(0.62 0.16 150);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.75 0.18 60);
+  --warning-foreground: oklch(0.20 0.04 60);
+  --info: oklch(0.62 0.14 220);
+  --info-foreground: oklch(0.99 0 0);
+
   --border: oklch(0.91 0.005 240);
   --input: oklch(0.91 0.005 240);
   --ring: oklch(0.43 0.18 264);
-  --chart-1: oklch(0.43 0.18 264);          /* Whirlpool blue */
-  --chart-2: oklch(0.83 0.16 84);           /* gold */
-  --chart-3: oklch(0.62 0.14 200);          /* sky */
-  --chart-4: oklch(0.65 0.22 18);           /* rose */
-  --chart-5: oklch(0.55 0.2 150);           /* green */
-  --sidebar: oklch(0.23 0.04 264);          /* deep navy sidebar */
+
+  /* Chart palette (Whirlpool-derived) */
+  --chart-1: oklch(0.43 0.18 264);   /* blue */
+  --chart-2: oklch(0.83 0.16 84);    /* gold */
+  --chart-3: oklch(0.62 0.14 200);   /* sky */
+  --chart-4: oklch(0.65 0.22 18);    /* rose */
+  --chart-5: oklch(0.55 0.2 150);    /* green */
+
+  /* Sidebar — deep navy for premium feel */
+  --sidebar: oklch(0.23 0.04 264);
   --sidebar-foreground: oklch(0.96 0.005 240);
-  --sidebar-primary: oklch(0.83 0.16 84);   /* gold for active items */
+  --sidebar-primary: oklch(0.83 0.16 84);
   --sidebar-primary-foreground: oklch(0.18 0.04 84);
   --sidebar-accent: oklch(0.28 0.05 264);
   --sidebar-accent-foreground: oklch(0.96 0.005 240);
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.83 0.16 84);
+
+  /* ─── Spacing & rhythm (4px base grid) ─── */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  12px;
+  --space-lg:  16px;
+  --space-xl:  24px;
+  --space-2xl: 32px;
+  --space-3xl: 48px;
+
+  /* ─── Motion ─── */
+  --ease-out:     cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:  cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 400ms;
+
+  /* ─── Elevation (Whirlpool-style soft shadows) ─── */
+  --shadow-xs:  0 1px 2px 0 rgba(20, 32, 50, 0.04);
+  --shadow-sm:  0 1px 3px 0 rgba(20, 32, 50, 0.06), 0 1px 2px -1px rgba(20, 32, 50, 0.04);
+  --shadow-md:  0 4px 6px -1px rgba(20, 32, 50, 0.08), 0 2px 4px -2px rgba(20, 32, 50, 0.06);
+  --shadow-lg:  0 10px 15px -3px rgba(20, 32, 50, 0.08), 0 4px 6px -4px rgba(20, 32, 50, 0.05);
+  --shadow-xl:  0 20px 25px -5px rgba(20, 32, 50, 0.10), 0 8px 10px -6px rgba(20, 32, 50, 0.06);
 }
 
 .dark {
@@ -94,7 +163,7 @@
   --card-foreground: oklch(0.96 0.005 240);
   --popover: oklch(0.21 0.02 264);
   --popover-foreground: oklch(0.96 0.005 240);
-  --primary: oklch(0.62 0.18 264);          /* lighter Whirlpool blue */
+  --primary: oklch(0.62 0.18 264);
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.27 0.02 264);
   --secondary-foreground: oklch(0.96 0.005 240);
@@ -103,6 +172,10 @@
   --accent: oklch(0.83 0.16 84);
   --accent-foreground: oklch(0.18 0.04 84);
   --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.7 0.16 150);
+  --warning: oklch(0.78 0.18 60);
+  --info: oklch(0.68 0.14 220);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.62 0.18 264);
@@ -122,19 +195,73 @@
 }
 
 @layer base {
-  html, body { font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11'; }
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: oklch(0.85 0.01 240); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
-  ::-webkit-scrollbar-thumb:hover { background: oklch(0.75 0.01 240); background-clip: padding-box; }
-  .dark ::-webkit-scrollbar-thumb { background: oklch(0.35 0.01 240); background-clip: padding-box; }
-}
-
-@layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
+  html, body {
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+  }
+
   body {
     @apply bg-background text-foreground;
+    font-synthesis-weight: none;
+  }
+
+  /* Custom scrollbars — slim & unobtrusive */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.85 0.01 240);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: oklch(0.75 0.01 240); background-clip: padding-box; }
+  .dark ::-webkit-scrollbar-thumb { background: oklch(0.35 0.01 240); background-clip: padding-box; }
+
+  /* Focus ring — consistent everywhere */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Animation utilities
+   ═══════════════════════════════════════════════════════════════ */
+@layer utilities {
+  .animate-fade-in {
+    animation: fade-in var(--duration-base) var(--ease-out);
+  }
+  .animate-slide-up {
+    animation: slide-up var(--duration-base) var(--ease-out);
+  }
+  .animate-slide-in-right {
+    animation: slide-in-right var(--duration-base) var(--ease-out);
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slide-in-right {
+    from { opacity: 0; transform: translateX(8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Number tabular alignment for tables & KPIs */
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+
+  /* Subtle backdrop blur for headers/sheets */
+  .glass {
+    backdrop-filter: saturate(180%) blur(12px);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
   }
 }
