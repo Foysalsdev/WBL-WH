@@ -6,7 +6,7 @@ import { EmptyState, StatusBadge } from '@/components/system'
 import { useSalesOrders } from './hooks'
 import { WorkflowDialog } from './WorkflowDialog'
 import { bdt, num, date } from '@/lib/format'
-import type { SalesOrder } from '@/domain/schemas'
+import type { SalesOrder, Dispatch } from '@/domain/schemas'
 
 // ═══════════════════════════════════════════════════════════════
 //  WorkflowTab — card grid for each workflow step
@@ -27,21 +27,27 @@ const STEP_META: Record<string, {
   pick:     { title: 'Pick Queue',        description: 'Confirmed orders awaiting warehouse pick',           icon: ClipboardList, expectedStatus: 'confirmed', actionLabel: 'Start picking' },
   scan:     { title: 'Scan Queue',        description: 'Picked orders awaiting barcode verification',         icon: ScanLine,       expectedStatus: 'picked',    actionLabel: 'Start scanning' },
   invoice:  { title: 'Invoice Queue',     description: 'Scanned orders awaiting invoice generation',          icon: FileText,       expectedStatus: 'scanned',   actionLabel: 'Generate invoice' },
-  dispatch: { title: 'Dispatch Queue',    description: 'Invoiced orders awaiting vehicle assignment',          icon: PackageCheck,   expectedStatus: 'invoiced',  actionLabel: 'Dispatch order' },
+  dispatch: { title: 'Dispatch Queue',    description: 'Invoiced orders awaiting dispatch (supports partial delivery)', icon: PackageCheck,   expectedStatus: 'invoiced',  actionLabel: 'Dispatch order' },
   pod:      { title: 'POD Confirmation',  description: 'Dispatched shipments awaiting proof of delivery',     icon: ShieldCheck,    expectedStatus: 'dispatched',actionLabel: 'Record POD' },
 }
 
 export function WorkflowTab({ step }: Props) {
   const { data, isLoading } = useSalesOrders()
-  const [target, setTarget] = useState<{ so: SalesOrder; step: string } | null>(null)
+  const [target, setTarget] = useState<{ so: SalesOrder; step: string; dispatch?: Dispatch | null } | null>(null)
 
   const meta = STEP_META[step]
   const Icon = meta.icon
 
-  // For POD tab, also include delivered orders with non-pending POD (for history)
+  // For dispatch tab, include both 'invoiced' and 'partially_dispatched'
+  // For POD tab, include any SO that has at least one dispatch with pending POD
   let queue: SalesOrder[]
-  if (step === 'pod') {
-    queue = (data || []).filter((so) => so.status === 'dispatched' && so.podStatus === 'pending')
+  if (step === 'dispatch') {
+    queue = (data || []).filter((so) => so.status === 'invoiced' || so.status === 'partially_dispatched')
+  } else if (step === 'pod') {
+    queue = (data || []).filter((so) =>
+      (so.status === 'dispatched' || so.status === 'partially_dispatched') &&
+      (so.dispatches || []).some((d) => d.podStatus === 'pending'),
+    )
   } else {
     queue = (data || []).filter((so) => so.status === meta.expectedStatus)
   }
@@ -125,15 +131,39 @@ export function WorkflowTab({ step }: Props) {
                   <p className="text-[10px] text-muted-foreground mt-1">{pickedQty}/{totalQty} units picked</p>
                 </div>
               )}
-              {step === 'dispatch' && so.invoiceNo && (
-                <p className="text-xs text-muted-foreground mb-3 font-mono">Invoice: {so.invoiceNo} · {num(so.cartonCount)} cartons</p>
+              {step === 'dispatch' && (
+                <div className="mb-3 space-y-1">
+                  {so.invoiceNo && (
+                    <p className="text-xs text-muted-foreground font-mono">Invoice: {so.invoiceNo} · {num(so.cartonCount)} cartons</p>
+                  )}
+                  {so.status === 'partially_dispatched' && (
+                    <p className="text-xs text-amber-600 font-medium">
+                      {num((so.items || []).reduce((s, it) => s + (it.deliveredQty || 0), 0))}/{num(totalQty)} units already dispatched
+                    </p>
+                  )}
+                </div>
               )}
-              {step === 'pod' && so.challanNo && (
-                <p className="text-xs text-muted-foreground mb-3 font-mono">Challan: {so.challanNo} · Vehicle: {so.vehicleNo}</p>
+              {step === 'pod' && (
+                <div className="mb-3 space-y-1">
+                  {(so.dispatches || []).filter((d) => d.podStatus === 'pending').map((d) => (
+                    <div key={d.id} className="text-xs text-muted-foreground font-mono">
+                      {d.dispatchNo} · {d.deliveryMethod === 'transport' ? `Vehicle ${d.vehicleNo}` : `${d.courierName} ${d.trackingNumber}`}
+                    </div>
+                  ))}
+                </div>
               )}
 
               <button
-                onClick={(e) => { e.stopPropagation(); setTarget({ so, step }) }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  // For POD, pass the first pending dispatch
+                  if (step === 'pod') {
+                    const pendingDispatch = (so.dispatches || []).find((d) => d.podStatus === 'pending')
+                    setTarget({ so, step, dispatch: pendingDispatch || null })
+                  } else {
+                    setTarget({ so, step })
+                  }
+                }}
                 className="w-full h-8 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center justify-center gap-1"
               >
                 <Icon className="h-3.5 w-3.5" />

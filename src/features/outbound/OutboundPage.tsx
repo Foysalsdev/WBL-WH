@@ -25,8 +25,9 @@ export function OutboundPage() {
       if (so.status === 'confirmed') acc.pickQueue += 1
       if (so.status === 'picked') acc.scanQueue += 1
       if (so.status === 'scanned') acc.invoiceQueue += 1
-      if (so.status === 'invoiced') acc.dispatchQueue += 1
-      if (so.status === 'dispatched') acc.inTransit += 1
+      if (so.status === 'invoiced' || so.status === 'partially_dispatched') acc.dispatchQueue += 1
+      // Count SOs with pending POD dispatches
+      if ((so.dispatches || []).some((d) => d.podStatus === 'pending')) acc.inTransit += 1
       if (so.status === 'delivered') acc.delivered += 1
       return acc
     },

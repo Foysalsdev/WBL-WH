@@ -9,8 +9,9 @@ import { InventoryPage } from '@/features/inventory/InventoryPage'
 import { CatalogPage } from '@/features/catalog/CatalogPage'
 import { InboundPage } from '@/features/inbound/InboundPage'
 import { OutboundPage } from '@/features/outbound/OutboundPage'
+import { ReportsPage } from '@/features/reports/ReportsPage'
 
-const ENABLED_MODULES = new Set(['dashboard', 'inventory', 'masters', 'inbound', 'outbound'])
+const ENABLED_MODULES = new Set(['dashboard', 'inventory', 'masters', 'inbound', 'outbound', 'reports'])
 
 export default function Home() {
   const activeModule = useUI((s) => s.activeModule)
@@ -24,6 +25,7 @@ export default function Home() {
           {activeModule === 'masters'    && <CatalogPage />}
           {activeModule === 'inbound'    && <InboundPage />}
           {activeModule === 'outbound'   && <OutboundPage />}
+          {activeModule === 'reports'    && <ReportsPage />}
           {!ENABLED_MODULES.has(activeModule) && <ComingSoon />}
         </AppShell>
       </QueryProvider>
@@ -35,7 +37,6 @@ export default function Home() {
 function ComingSoon() {
   const activeModule = useUI((s) => s.activeModule)
   const labelMap: Record<string, string> = {
-    reports: 'Reports',
     audit: 'Audit Log',
   }
   const label = labelMap[activeModule] || 'This module'
@@ -53,12 +54,12 @@ function ComingSoon() {
         This module will be built in the next phase of our phased rollout.
       </p>
       <p className="text-sm text-muted-foreground">
-        Foundation, dashboard, inventory, catalog, inbound, and outbound are live. Each remaining module gets its own dedicated build session.
+        Foundation, dashboard, inventory, catalog, inbound, outbound, and reports are live.
       </p>
       <div className="mt-6 inline-flex items-center gap-2 rounded-full border bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground">
-        <span className="font-mono">Phase 4 · Outbound complete</span>
+        <span className="font-mono">Phase 5 · Reports complete</span>
         <span>·</span>
-        <span>Next up: Phase 5 · {label}</span>
+        <span>Next up: Phase 6 · {label}</span>
       </div>
     </div>
   )
