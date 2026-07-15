@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { PackageCheck, Truck, Send } from 'lucide-react'
 import { WorkflowStepDialog } from './WorkflowStepDialog'
 import { usePatchSO } from './hooks'
+import { SearchableSelect } from '@/components/system/searchable-select'
+import { courierVendorsApi } from '@/lib/api/endpoints'
+import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { inputClass, textareaClass } from '@/lib/styles'
 import { bdt, num } from '@/lib/format'
@@ -49,6 +52,10 @@ export function DispatchDialog({ so, onClose }: Props) {
   const [lines, setLines] = useState<DispatchLine[]>([])
 
   const patchMutation = usePatchSO()
+  const { data: courierVendors } = useQuery({
+    queryKey: ['courier-vendors', 'dispatch-select'],
+    queryFn: () => courierVendorsApi.list(),
+  })
 
   useEffect(() => {
     if (so) {
@@ -220,16 +227,19 @@ export function DispatchDialog({ so, onClose }: Props) {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="text-xs font-medium">Courier name *</label>
-              <select className={inputClass + ' mt-1'} value={courierName} onChange={(e) => setCourierName(e.target.value)}>
-                <option value="">Select courier…</option>
-                <option value="Steadfast">Steadfast</option>
-                <option value="Pathao">Pathao</option>
-                <option value="REDX">REDX</option>
-                <option value="Sundarban">Sundarban Courier</option>
-                <option value="eCourier">eCourier</option>
-                <option value="Other">Other</option>
-              </select>
+              <label className="text-xs font-medium">Courier vendor *</label>
+              <SearchableSelect
+                items={(courierVendors || []) as any[]}
+                value={courierName}
+                onChange={(v) => {
+                  // Find the vendor name from the selected id
+                  const vendor = (courierVendors || []).find((c: any) => c.id === v) as any
+                  setCourierName(vendor?.name || '')
+                }}
+                placeholder="Select courier…"
+                searchPlaceholder="Search courier…"
+                renderItem={(c: any) => ({ label: c.name, sub: c.code })}
+              />
             </div>
             <div>
               <label className="text-xs font-medium">Tracking number</label>

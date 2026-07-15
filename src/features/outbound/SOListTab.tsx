@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Truck, X, ClipboardList, ScanLine, FileText, PackageCheck, ShieldCheck, Send, Printer } from 'lucide-react'
+import { Truck, X, ClipboardList, ScanLine, FileText, PackageCheck, ShieldCheck, Send, Printer, FileCheck, ScanLine as ScanIcon } from 'lucide-react'
 import { StatusBadge } from '@/components/system'
 import { CodeCell, DataTable, type Column } from '@/components/system/data-table'
 import { MasterTabShell } from '@/components/system/master-tab-shell'
 import { ViewDialog, type ViewField } from '@/components/system/view-dialog'
 import { RowActions } from '@/components/system/row-actions'
+import { printDeliveryChallan, printGatePass } from './print-docs'
 import { useSalesOrders, usePatchSO } from './hooks'
 import { WorkflowDialog } from './WorkflowDialog'
 import { toast } from 'sonner'
@@ -307,6 +308,23 @@ export function SOListTab() {
                             Record POD
                           </button>
                         )}
+                        {/* Print buttons — Delivery Challan & Gate Pass */}
+                        <div className="mt-2 flex gap-2">
+                          <button
+                            onClick={() => printDeliveryChallan(viewItem, d)}
+                            className="h-7 px-2 text-xs font-medium rounded-md border border-input bg-background hover:bg-accent transition-colors inline-flex items-center gap-1"
+                          >
+                            <FileText className="h-3 w-3" />
+                            Delivery Challan
+                          </button>
+                          <button
+                            onClick={() => printGatePass(viewItem, d)}
+                            className="h-7 px-2 text-xs font-medium rounded-md border border-rose-300 text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors inline-flex items-center gap-1"
+                          >
+                            <FileCheck className="h-3 w-3" />
+                            Gate Pass
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

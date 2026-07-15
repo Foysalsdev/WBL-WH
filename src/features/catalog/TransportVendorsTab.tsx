@@ -114,12 +114,39 @@ export function TransportVendorsTab() {
   }
 
   function handlePrint(v: TransportVendor) {
-    toast.info('Print coming soon', { description: `Print for ${v.code}` })
+    const w = window.open('', '_blank', 'width=720,height=900')
+    if (!w) { toast.error('Pop-up blocked'); return }
+    w.document.write(`
+      <html><head><title>${v.code} — Transport Vendor</title>
+      <style>body{font-family:Arial,sans-serif;margin:32px;color:#142032}
+      .header{display:flex;justify-content:space-between;border-bottom:2px solid #0c389f;padding-bottom:12px;margin-bottom:20px}
+      .brand{font-size:18px;font-weight:700;color:#0c389f}
+      h1{font-size:20px;margin:8px 0}
+      table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}
+      th{background:#f3f4f6;padding:6px;text-align:left}
+      td{padding:6px;border-bottom:1px solid #e5e7eb}</style></head><body>
+      <div class="header"><div><div class="brand">Whirlpool Bangladesh</div><div style="font-size:11px;color:#6b7280">Transport Vendor Profile</div></div>
+      <div style="text-align:right;font-size:11px;color:#6b7280">Printed: ${new Date().toLocaleString('en-GB')}</div></div>
+      <h1>${v.name}</h1>
+      <p style="font-family:monospace;color:#6b7280">Code: ${v.code}</p>
+      <p>Phone: ${v.phone || '—'} | Address: ${v.address || '—'}</p>
+      <table><thead><tr><th>Vehicle No.</th><th>Driver Name</th><th>Driver Phone</th></tr></thead>
+      <tbody>${(v.vehicles||[]).map(vh => `<tr><td style="font-family:monospace;font-weight:600">${vh.vehicleNo}</td><td>${vh.driverName||'—'}</td><td>${vh.driverPhone||'—'}</td></tr>`).join('')}</tbody></table>
+      </body></html>
+    `)
+    w.document.close(); w.focus(); setTimeout(() => w.print(), 300)
   }
 
-  function handleDelete() {
-    toast.info('Delete coming soon', { description: `Delete for ${deleteItem?.code}` })
-    setDeleteItem(null)
+  async function handleDelete() {
+    if (!deleteItem) return
+    try {
+      await transportVendorsApi.delete(deleteItem.id)
+      toast.success('Transport vendor deleted', { description: `${deleteItem.code} · ${deleteItem.name}` })
+      setDeleteItem(null)
+      qc.invalidateQueries({ queryKey: ['transport-vendors'] })
+    } catch (e: any) {
+      toast.error('Failed to delete', { description: e.message })
+    }
   }
 
   const totalVehicles = vendors.reduce((s, v) => s + (v.vehicles?.length || 0), 0)

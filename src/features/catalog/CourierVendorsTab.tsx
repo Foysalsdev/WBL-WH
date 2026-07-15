@@ -93,9 +93,16 @@ export function CourierVendorsTab() {
     ]
   }
 
-  function handleDelete() {
-    toast.info('Delete coming soon', { description: `Delete for ${deleteItem?.code}` })
-    setDeleteItem(null)
+  async function handleDelete() {
+    if (!deleteItem) return
+    try {
+      await courierVendorsApi.delete(deleteItem.id)
+      toast.success('Courier vendor deleted', { description: `${deleteItem.code} · ${deleteItem.name}` })
+      setDeleteItem(null)
+      qc.invalidateQueries({ queryKey: ['courier-vendors'] })
+    } catch (e: any) {
+      toast.error('Failed to delete', { description: e.message })
+    }
   }
 
   const columns: Column<CourierVendor>[] = [

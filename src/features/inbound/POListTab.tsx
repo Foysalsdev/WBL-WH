@@ -103,7 +103,7 @@ export function POListTab() {
             )}
             <RowActions
               onView={() => setViewItem(po)}
-              onPrint={() => toast.info('Print coming soon', { description: `Print for ${po.poNumber}` })}
+              onPrint={() => printPurchaseOrder(po)}
               onDelete={po.status === 'draft' ? () => setStatus(po, 'cancelled') : undefined}
             />
           </div>
@@ -144,7 +144,7 @@ export function POListTab() {
         subtitle={viewItem ? `Ordered ${date(viewItem.orderDate)}` : ''}
         badge={viewItem ? { label: viewItem.status, tone: viewItem.status === 'received' ? 'success' : viewItem.status === 'cancelled' ? 'destructive' : 'info' } : undefined}
         fields={viewItem ? viewFields(viewItem) : []}
-        onPrint={() => toast.info('Print coming soon')}
+        onPrint={() => viewItem && printPurchaseOrder(viewItem)}
         footer={
           viewItem && viewItem.items && viewItem.items.length > 0 ? (
             <div>
@@ -186,6 +186,61 @@ export function POListTab() {
       <GrnDialog po={grnTarget} onClose={() => setGrnTarget(null)} />
     </div>
   )
+}
+
+// ─── Print helper — Purchase Order PDF ──────────────────────────
+function printPurchaseOrder(po: PurchaseOrder) {
+  const rows = (po.items || []).map((it, i) => `
+    <tr>
+      <td style="text-align:center">${i + 1}</td>
+      <td style="font-family:monospace">${it.product?.sku || '—'}</td>
+      <td>${it.product?.name || '—'}</td>
+      <td style="text-align:right">${it.quantity}</td>
+      <td style="text-align:right">TK ${it.unitPrice.toLocaleString('en-IN')}</td>
+      <td style="text-align:right;font-weight:600">TK ${(it.quantity * it.unitPrice).toLocaleString('en-IN')}</td>
+    </tr>
+  `).join('')
+  const w = window.open('', '_blank', 'width=800,height=1000')
+  if (!w) { toast.error('Pop-up blocked'); return }
+  w.document.write(`
+    <html><head><title>${po.poNumber} — Purchase Order</title>
+    <style>
+      body{font-family:Arial,sans-serif;margin:32px;color:#142032}
+      .header{display:flex;justify-content:space-between;border-bottom:3px solid #0c389f;padding-bottom:12px;margin-bottom:20px}
+      .brand{font-size:20px;font-weight:700;color:#0c389f}
+      h1{font-size:20px;margin:12px 0 4px}
+      .info{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;font-size:13px}
+      .info-box{border:1px solid #e5e7eb;border-radius:4px;padding:10px}
+      .info-box h3{font-size:10px;text-transform:uppercase;color:#6b7280;margin:0 0 4px}
+      table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}
+      th{background:#0c389f;color:white;padding:6px;text-align:left;font-size:11px;text-transform:uppercase}
+      td{padding:6px 8px;border-bottom:1px solid #e5e7eb}
+      .total{margin-top:12px;text-align:right;font-weight:700;font-size:16px}
+      .footer{margin-top:40px;display:grid;grid-template-columns:repeat(3,1fr);gap:40px}
+      .sign{border-top:1px solid #142032;margin-top:40px;padding-top:6px;font-size:11px;color:#6b7280;text-align:center}
+      .meta{margin-top:32px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:10px;color:#6b7280;text-align:center}
+    </style></head><body>
+    <div class="header">
+      <div><div class="brand">Whirlpool Bangladesh</div><div style="font-size:11px;color:#6b7280">Warehouse Management System</div></div>
+      <div style="text-align:right"><strong style="font-size:16px;color:#0c389f">PURCHASE ORDER</strong><br/><span style="font-family:monospace;font-weight:600">${po.poNumber}</span><br/><span style="font-size:11px;color:#6b7280">${date(po.orderDate)}</span></div>
+    </div>
+    <div class="info">
+      <div class="info-box"><h3>Supplier</h3><p><strong>${po.supplier?.name || '—'}</strong></p><p>Code: ${po.supplier?.code || '—'}</p></div>
+      <div class="info-box"><h3>Order Details</h3><p>Expected: ${date(po.expectedDate)}</p><p>GRN: ${po.grnNumber || '—'}</p><p>Status: ${po.status}</p></div>
+    </div>
+    ${po.notes ? `<p style="font-size:12px;color:#6b7280;margin-bottom:8px"><strong>Notes:</strong> ${po.notes}</p>` : ''}
+    <table><thead><tr><th style="width:30px;text-align:center">#</th><th style="width:100px">SKU</th><th>Product</th><th style="text-align:right;width:50px">Qty</th><th style="text-align:right;width:90px">Unit Price</th><th style="text-align:right;width:110px">Total</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <div class="total">Grand Total: TK ${po.totalAmount.toLocaleString('en-IN')}</div>
+    <div class="footer">
+      <div class="sign">Prepared By</div>
+      <div class="sign">Approved By</div>
+      <div class="sign">Supplier Signature</div>
+    </div>
+    <div class="meta">Whirlpool Bangladesh · WMS · PO ${po.poNumber} · Generated ${new Date().toLocaleString('en-GB')}</div>
+    </body></html>
+  `)
+  w.document.close(); w.focus(); setTimeout(() => w.print(), 300)
 }
 
 // Need to import ClipboardCheck icon here for the JSX above

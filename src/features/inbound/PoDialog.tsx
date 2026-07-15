@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { CreateDialog } from '@/components/system/create-dialog'
 import { Field } from '@/components/system/forms'
+import { SearchableSelect } from '@/components/system/searchable-select'
 import { inputClass, textareaClass } from '@/lib/styles'
 import { useCreatePO, useSuppliersForSelect, useProductsForSelect } from './hooks'
 import { toast } from 'sonner'
@@ -108,16 +109,14 @@ export function PoDialog({ open, onOpenChange }: Props) {
         {/* Header fields */}
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Sourcing Partner" required>
-            <select
-              className={inputClass}
+            <SearchableSelect
+              items={suppliers || []}
               value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-            >
-              <option value="">Select supplier…</option>
-              {(suppliers || []).map((s) => (
-                <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
-              ))}
-            </select>
+              onChange={setSupplierId}
+              placeholder="Select supplier…"
+              searchPlaceholder="Search by name or code…"
+              renderItem={(s) => ({ label: s.name, sub: s.code })}
+            />
           </Field>
           <Field label="Expected date">
             <input
@@ -157,16 +156,14 @@ export function PoDialog({ open, onOpenChange }: Props) {
             {lines.map((l, i) => (
               <div key={i} className="grid grid-cols-12 gap-2 p-2 items-center">
                 <div className="col-span-5">
-                  <select
-                    className={inputClass + ' h-9'}
+                  <SearchableSelect
+                    items={products || []}
                     value={l.productId}
-                    onChange={(e) => pickProduct(i, e.target.value)}
-                  >
-                    <option value="">Select product…</option>
-                    {(products || []).map((p) => (
-                      <option key={p.id} value={p.id}>{p.sku} · {p.name}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => pickProduct(i, v)}
+                    placeholder="Select product…"
+                    searchPlaceholder="Search by SKU or name…"
+                    renderItem={(p) => ({ label: p.name, sub: p.sku })}
+                  />
                 </div>
                 <input
                   type="number"

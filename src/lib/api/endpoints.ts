@@ -150,6 +150,7 @@ export const transportVendorsApi = {
   list: (search?: string) =>
     api.get<unknown[]>(`/api/transport-vendors${search ? `?search=${encodeURIComponent(search)}` : ''}`),
   create: (input: any) => api.post<unknown>('/api/transport-vendors', input),
+  delete: (id: string) => api.delete<{ ok?: boolean; error?: string }>(`/api/transport-vendors/${id}`),
 }
 
 // ─── Courier Vendors ────────────────────────────────────────────
@@ -157,6 +158,7 @@ export const courierVendorsApi = {
   list: (search?: string) =>
     api.get<unknown[]>(`/api/courier-vendors${search ? `?search=${encodeURIComponent(search)}` : ''}`),
   create: (input: any) => api.post<unknown>('/api/courier-vendors', input),
+  delete: (id: string) => api.delete<{ ok?: boolean; error?: string }>(`/api/courier-vendors/${id}`),
 }
 
 // ─── Vehicles (for auto-fill) ───────────────────────────────────
