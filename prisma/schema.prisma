@@ -292,6 +292,62 @@ model CourierVendor {
 }
 
 // ───────────────────────────────────────────────
+//  Finance — Requisition, Cash In, Expense
+//  Warehouse sends requisition to HO → money arrives from 3i Logistics →
+//  expenses (procurement + other) tracked → month-end report sent to HO.
+// ───────────────────────────────────────────────
+
+model Requisition {
+  id           String    @id @default(cuid())
+  reqNo        String    @unique   // REQ-2026-00001
+  date         DateTime  @default(now())
+  amount       Float
+  purpose      String
+  status       String    @default("pending") // pending | approved | received | rejected
+  approvedBy   String?
+  approvedAt   DateTime?
+  receivedBy   String?
+  receivedAt   DateTime?
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  cashIns      CashIn[]
+}
+
+model CashIn {
+  id            String    @id @default(cuid())
+  cashInNo      String    @unique   // CIN-2026-00001
+  date          DateTime  @default(now())
+  amount        Float
+  source        String    @default("3i Logistics") // 3i Logistics | Head Office | Bank
+  requisitionId String?
+  receivedBy    String
+  notes         String?
+  createdAt     DateTime  @default(now())
+  requisition   Requisition? @relation(fields: [requisitionId], references: [id])
+}
+
+model Expense {
+  id            String    @id @default(cuid())
+  expenseNo     String    @unique   // EXP-2026-00001
+  date          DateTime  @default(now())
+  type          String    @default("procurement") // procurement | other
+  category      String    // Fuel | Transport | Maintenance | Utilities | Salary | Misc | Procurement
+  beneficiary   String    // who received the payment
+  amount        Float
+  paymentMode   String    @default("cash") // cash | bank | bkash | nagad | cheque
+  memoNo        String?   // physical procurement memo number (warehouse's own)
+  memoDate      DateTime?
+  billNo        String?   // vendor bill/cash memo number
+  billDate      DateTime?
+  receiverName  String?   // who signed the money receipt
+  paidBy        String?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// ───────────────────────────────────────────────
 //  Audit trail
 // ───────────────────────────────────────────────
 
