@@ -41,7 +41,7 @@ export function WorkflowStepDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className={maxWidth || 'max-w-2xl'}>
+      <DialogContent className={maxWidth || 'max-w-2xl'} showCloseButton={false}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {icon}

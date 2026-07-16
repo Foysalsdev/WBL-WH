@@ -31,7 +31,7 @@ export function SOListTab() {
     const q = search.toLowerCase()
     return so.soNumber.toLowerCase().includes(q) ||
            so.customer?.name.toLowerCase().includes(q) ||
-           so.invoiceNo?.toLowerCase().includes(q) ||
+           so.sapInvoiceRef?.toLowerCase().includes(q) ||
            so.dispatches?.some((d) => d.challanNo?.toLowerCase().includes(q) || d.dispatchNo.toLowerCase().includes(q))
   })
 
@@ -44,43 +44,6 @@ export function SOListTab() {
     }
   }
 
-  function printInvoice(so: SalesOrder) {
-    const w = window.open('', '_blank', 'width=800,height=1000')
-    if (!w) { toast.error('Pop-up blocked'); return }
-    const rows = (so.items || []).map((it) => `
-      <tr>
-        <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${it.product?.sku || ''}</td>
-        <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${it.product?.name || ''}</td>
-        <td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right;">${it.quantity}</td>
-        <td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right;">TK ${it.unitPrice.toLocaleString('en-IN')}</td>
-        <td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">TK ${(it.quantity * it.unitPrice).toLocaleString('en-IN')}</td>
-      </tr>
-    `).join('')
-    w.document.write(`
-      <html><head><title>${so.soNumber} — Invoice</title>
-      <style>
-        body{font-family:Arial,sans-serif;margin:32px;color:#142032}
-        .header{display:flex;justify-content:space-between;border-bottom:2px solid #0c389f;padding-bottom:12px;margin-bottom:20px}
-        .brand{font-size:20px;font-weight:700;color:#0c389f}
-        h1{font-size:18px;margin:16px 0 4px}
-        table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}
-        th{background:#f3f4f6;padding:6px;text-align:left;font-size:11px;text-transform:uppercase}
-        .total{margin-top:16px;text-align:right;font-size:16px;font-weight:700}
-        .info{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:13px}
-      </style></head><body>
-      <div class="header"><div><div class="brand">Whirlpool Bangladesh</div><div style="font-size:11px;color:#6b7280">Warehouse Management System</div></div>
-      <div style="text-align:right;font-size:13px"><strong>INVOICE</strong><br/>${so.invoiceNo || so.soNumber}<br/>${date(so.invoiceDate || so.orderDate)}</div></div>
-      <div class="info">
-        <div><strong>Dealer:</strong> ${so.customer?.name || ''}<br/><strong>Code:</strong> ${so.customer?.code || ''}<br/><strong>City:</strong> ${so.customer?.city || ''}</div>
-        <div><strong>SO Number:</strong> ${so.soNumber}<br/><strong>Order Date:</strong> ${date(so.orderDate)}<br/><strong>Delivery Date:</strong> ${date(so.deliveryDate)}</div>
-      </div>
-      <table><thead><tr><th>SKU</th><th>Product</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th></tr></thead>
-      <tbody>${rows}</tbody></table>
-      <div class="total">Grand Total: TK ${so.totalAmount.toLocaleString('en-IN')}</div>
-      </body></html>
-    `)
-    w.document.close(); w.focus(); setTimeout(() => w.print(), 300)
-  }
 
   function viewFields(so: SalesOrder): ViewField[] {
     return [
@@ -91,7 +54,7 @@ export function SOListTab() {
       { label: 'Order Date', value: date(so.orderDate) },
       { label: 'Delivery Date', value: date(so.deliveryDate) },
       { label: 'Total Amount', value: bdt(so.totalAmount), mono: true },
-      { label: 'Invoice No', value: so.invoiceNo || '—', mono: true },
+      { label: 'SAP Ref No', value: so.sapInvoiceRef || '—', mono: true },
       { label: 'Picked By', value: so.pickedBy || '—' },
       { label: 'Scanned By', value: so.scannedBy || '—' },
       { label: 'Notes', value: so.notes || '—', full: true },
@@ -160,9 +123,9 @@ export function SOListTab() {
               <button onClick={() => setWorkflowTarget({ so, step: 'scan' })} className="h-8 px-2.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center gap-1"><ScanLine className="h-3.5 w-3.5" />Scan</button>
             )}
             {so.status === 'scanned' && (
-              <button onClick={() => setWorkflowTarget({ so, step: 'invoice' })} className="h-8 px-2.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center gap-1"><FileText className="h-3.5 w-3.5" />Invoice</button>
+              <button onClick={() => setWorkflowTarget({ so, step: 'ready' })} className="h-8 px-2.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center gap-1"><FileText className="h-3.5 w-3.5" />SAP Ref</button>
             )}
-            {(so.status === 'invoiced' || so.status === 'partially_dispatched') && (
+            {(so.status === 'ready' || so.status === 'partially_dispatched') && (
               <button onClick={() => setWorkflowTarget({ so, step: 'dispatch' })} className="h-8 px-2.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center gap-1"><PackageCheck className="h-3.5 w-3.5" />Dispatch</button>
             )}
             {pendingPods.length > 0 && (
@@ -170,7 +133,7 @@ export function SOListTab() {
             )}
             <RowActions
               onView={() => setViewItem(so)}
-              onPrint={() => printInvoice(so)}
+              onPrint={() => toast.info("Use Delivery Challan from dispatch view")}
             />
           </div>
         )
@@ -183,7 +146,7 @@ export function SOListTab() {
       <MasterTabShell<SalesOrder>
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search by SO number, dealer, invoice, challan or dispatch no…"
+        searchPlaceholder="Search by SO number, dealer, SAP ref, challan or dispatch no…"
         onRefresh={() => refetch()}
         isLoading={isLoading}
         isError={isError}
@@ -214,7 +177,7 @@ export function SOListTab() {
         } : undefined}
         fields={viewItem ? viewFields(viewItem) : []}
         onEdit={undefined}
-        onPrint={() => viewItem && printInvoice(viewItem)}
+        onPrint={() => toast.info("Use Delivery Challan from dispatch view")}
         footer={
           viewItem ? (
             <div className="space-y-4">

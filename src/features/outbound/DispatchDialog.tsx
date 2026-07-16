@@ -5,7 +5,7 @@ import { PackageCheck, Truck, Send } from 'lucide-react'
 import { WorkflowStepDialog } from './WorkflowStepDialog'
 import { usePatchSO } from './hooks'
 import { SearchableSelect } from '@/components/system/searchable-select'
-import { courierVendorsApi } from '@/lib/api/endpoints'
+import { courierVendorsApi, transportVendorsApi, vehiclesApi } from '@/lib/api/endpoints'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { inputClass, textareaClass } from '@/lib/styles'
@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 import type { SalesOrder } from '@/domain/schemas'
 
 // ═══════════════════════════════════════════════════════════════
-//  DispatchDialog — Step 4: ship out via Transport or Courier
+//  DispatchDialog — Step 4: ship out via Transport Vendor or Courier Vendor
 //  Supports partial delivery (per-line quantities).
 //  Stock is deducted only for the dispatched quantities.
 // ═══════════════════════════════════════════════════════════════
@@ -38,11 +38,14 @@ interface DispatchLine {
 
 export function DispatchDialog({ so, onClose }: Props) {
   const [deliveryMethod, setDeliveryMethod] = useState<'transport' | 'courier'>('transport')
-  // Transport fields
+  // Transport vendor fields
+  const [transportVendorId, setTransportVendorId] = useState('')
   const [vehicleNo, setVehicleNo] = useState('')
   const [driverName, setDriverName] = useState('')
   const [driverPhone, setDriverPhone] = useState('')
+  const [lockNo, setLockNo] = useState('')
   // Courier fields
+  const [courierVendorId, setCourierVendorId] = useState('')
   const [courierName, setCourierName] = useState('')
   const [trackingNumber, setTrackingNumber] = useState('')
   // Common
@@ -52,17 +55,37 @@ export function DispatchDialog({ so, onClose }: Props) {
   const [lines, setLines] = useState<DispatchLine[]>([])
 
   const patchMutation = usePatchSO()
+
+  // Load transport vendors + vehicles
+  const { data: transportVendors } = useQuery({
+    queryKey: ['transport-vendors', 'dispatch-select'],
+    queryFn: () => transportVendorsApi.list(),
+  })
+  const { data: vehicles } = useQuery({
+    queryKey: ['vehicles', transportVendorId],
+    queryFn: () => vehiclesApi.search(''),
+    enabled: !!transportVendorId,
+  })
+  // Load courier vendors
   const { data: courierVendors } = useQuery({
     queryKey: ['courier-vendors', 'dispatch-select'],
     queryFn: () => courierVendorsApi.list(),
   })
 
+  // Find the selected transport vendor object
+  const selectedTransportVendor = (transportVendors || []).find((v: any) => v.id === transportVendorId) as any
+  const selectedVehicle = (vehicles || []).find((v: any) => v.vehicleNo === vehicleNo) as any
+  const selectedCourierVendor = (courierVendors || []).find((c: any) => c.id === courierVendorId) as any
+
   useEffect(() => {
     if (so) {
       setDeliveryMethod('transport')
+      setTransportVendorId('')
       setVehicleNo('')
       setDriverName('')
       setDriverPhone('')
+      setLockNo('')
+      setCourierVendorId('')
       setCourierName('')
       setTrackingNumber('')
       setChallanNo('')
@@ -88,18 +111,33 @@ export function DispatchDialog({ so, onClose }: Props) {
     setLines((arr) => arr.map((l, idx) => idx === i ? { ...l, dispatching: v } : l))
   }
 
+  // When vehicle selected from dropdown, auto-fill driver info
+  function onVehicleSelect(no: string) {
+    setVehicleNo(no)
+    const v = (vehicles || []).find((x: any) => x.vehicleNo === no) as any
+    if (v) {
+      setDriverName(v.driverName || '')
+      setDriverPhone(v.driverPhone || '')
+    }
+  }
+
+  function onCourierSelect(id: string) {
+    setCourierVendorId(id)
+    const v = (courierVendors || []).find((c: any) => c.id === id) as any
+    setCourierName(v?.name || '')
+  }
+
   const totalDispatching = lines.reduce((s, l) => s + (Number(l.dispatching) || 0), 0)
   const totalRemaining = lines.reduce((s, l) => s + Math.max(0, l.picked - l.delivered), 0)
   const dispatchAmount = lines.reduce((s, l) => s + (Number(l.dispatching) || 0) * l.unitPrice, 0)
 
   async function submit() {
-    if (deliveryMethod === 'transport' && !vehicleNo) {
-      toast.error('Vehicle number required for transport delivery')
-      return
+    if (deliveryMethod === 'transport') {
+      if (!transportVendorId) { toast.error('Please select a Transport Vendor'); return }
+      if (!vehicleNo) { toast.error('Vehicle number required'); return }
     }
-    if (deliveryMethod === 'courier' && !courierName) {
-      toast.error('Courier name required for courier delivery')
-      return
+    if (deliveryMethod === 'courier') {
+      if (!courierVendorId) { toast.error('Please select a Courier Vendor'); return }
     }
     const itemsToDispatch = lines
       .map((l) => ({ ...l, qty: Number(l.dispatching) || 0 }))
@@ -123,14 +161,19 @@ export function DispatchDialog({ so, onClose }: Props) {
         body: {
           action: 'dispatch',
           deliveryMethod,
+          // Transport fields — include vendor name + vehicle + driver
           vehicleNo: deliveryMethod === 'transport' ? vehicleNo : undefined,
-          driverName: deliveryMethod === 'transport' ? driverName : undefined,
-          driverPhone: deliveryMethod === 'transport' ? driverPhone : undefined,
-          courierName: deliveryMethod === 'courier' ? courierName : undefined,
+          driverName: deliveryMethod === 'transport' ? (driverName || selectedVehicle?.driverName) : undefined,
+          driverPhone: deliveryMethod === 'transport' ? (driverPhone || selectedVehicle?.driverPhone) : undefined,
+          // Courier fields — include vendor name + tracking
+          courierName: deliveryMethod === 'courier' ? (courierName || selectedCourierVendor?.name) : undefined,
           trackingNumber: deliveryMethod === 'courier' ? trackingNumber : undefined,
+          // Common
           challanNo: challanNo || undefined,
           dispatchedBy,
-          notes: notes || undefined,
+          // Encode transport vendor name + lock no into notes so the
+          // print-docs.ts can render them on the official challan format.
+          notes: notes || `vendor:${selectedTransportVendor?.name || ''}|lock:${lockNo}`,
           items: itemsToDispatch.map((l) => ({
             soItemId: l.soItemId,
             productId: l.productId,
@@ -141,7 +184,7 @@ export function DispatchDialog({ so, onClose }: Props) {
       })
       if (result.ok) {
         toast.success(`${so!.soNumber} dispatched`, {
-          description: `${result.dispatchNo} · ${num(totalDispatching)} units via ${deliveryMethod}${result.allDelivered ? ' · All delivered' : ' · Partial'}`,
+          description: `${result.dispatchNo} · ${num(totalDispatching)} units via ${deliveryMethod === 'transport' ? (selectedTransportVendor?.name || 'transport') : (selectedCourierVendor?.name || 'courier')}${result.allDelivered ? ' · All delivered' : ' · Partial'}`,
         })
         onClose()
       } else {
@@ -164,12 +207,12 @@ export function DispatchDialog({ so, onClose }: Props) {
       onSubmit={submit}
       submitLabel={patchMutation.isPending ? 'Dispatching…' : `Dispatch ${num(totalDispatching)} units`}
       disabled={patchMutation.isPending}
-      maxWidth="max-w-3xl"
+      maxWidth="max-w-4xl"
     >
       <div className="space-y-4">
         {/* Order summary */}
         <div className="rounded-lg border bg-muted/30 p-3 grid grid-cols-4 gap-3 text-sm">
-          <div><p className="text-xs text-muted-foreground">Invoice</p><p className="font-mono font-medium text-xs">{so.invoiceNo || '—'}</p></div>
+          <div><p className="text-xs text-muted-foreground">Invoice</p><p className="font-mono font-medium text-xs">{so.sapInvoiceRef || '—'}</p></div>
           <div><p className="text-xs text-muted-foreground">Total units</p><p className="font-medium tabular-nums">{num(totalRemaining + (lines.reduce((s, l) => s + l.delivered, 0)))}</p></div>
           <div><p className="text-xs text-muted-foreground">Already delivered</p><p className="font-medium tabular-nums text-emerald-600">{num(lines.reduce((s, l) => s + l.delivered, 0))}</p></div>
           <div><p className="text-xs text-muted-foreground">Remaining</p><p className="font-medium tabular-nums text-amber-600">{num(totalRemaining)}</p></div>
@@ -190,7 +233,7 @@ export function DispatchDialog({ so, onClose }: Props) {
               )}
             >
               <Truck className="h-4 w-4" />
-              Transport (own vehicle)
+              Transport Vendor (own fleet)
             </button>
             <button
               type="button"
@@ -203,48 +246,106 @@ export function DispatchDialog({ so, onClose }: Props) {
               )}
             >
               <Send className="h-4 w-4" />
-              Courier (3rd party)
+              Courier Vendor (3rd party)
             </button>
           </div>
         </div>
 
-        {/* Transport / Courier fields */}
+        {/* Transport Vendor fields */}
         {deliveryMethod === 'transport' ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="text-xs font-medium">Vehicle no. *</label>
-              <input className={inputClass + ' mt-1'} value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value)} placeholder="DHK-GAZ-0000" />
+          <div className="space-y-3 rounded-lg border p-3 bg-card">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Transport Vendor Details
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-medium">Transport Vendor *</label>
+                <SearchableSelect
+                  items={(transportVendors || []) as any[]}
+                  value={transportVendorId}
+                  onChange={setTransportVendorId}
+                  placeholder="Select transport vendor…"
+                  searchPlaceholder="Search vendor…"
+                  renderItem={(v: any) => ({ label: v.name, sub: v.code })}
+                />
+                {(transportVendors || []).length === 0 && (
+                  <p className="mt-1 text-[11px] text-amber-600">
+                    No vendors yet — add them in Catalog → Transport Vendors
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium">Vehicle No. * {vehicles && vehicles.length > 0 && <span className="text-muted-foreground">(select or type)</span>}</label>
+                <input
+                  className={inputClass + ' mt-1'}
+                  value={vehicleNo}
+                  onChange={(e) => onVehicleSelect(e.target.value)}
+                  placeholder="DHK-GAZ-0000"
+                  list="vehicle-list"
+                />
+                <datalist id="vehicle-list">
+                  {(vehicles || []).map((v: any) => (
+                    <option key={v.id} value={v.vehicleNo}>
+                      {v.vehicleNo} — {v.driverName || 'no driver'}
+                    </option>
+                  ))}
+                </datalist>
+              </div>
+              <div>
+                <label className="text-xs font-medium">Driver name</label>
+                <input className={inputClass + ' mt-1'} value={driverName} onChange={(e) => setDriverName(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs font-medium">Driver phone</label>
+                <input className={inputClass + ' mt-1'} value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} placeholder="+88017…" />
+              </div>
+              <div>
+                <label className="text-xs font-medium">Lock No.</label>
+                <input className={inputClass + ' mt-1 font-mono'} value={lockNo} onChange={(e) => setLockNo(e.target.value)} placeholder="e.g. 562909" />
+              </div>
             </div>
-            <div>
-              <label className="text-xs font-medium">Driver name</label>
-              <input className={inputClass + ' mt-1'} value={driverName} onChange={(e) => setDriverName(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-xs font-medium">Driver phone</label>
-              <input className={inputClass + ' mt-1'} value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} placeholder="+88017…" />
-            </div>
+            {selectedTransportVendor && (
+              <p className="text-[11px] text-muted-foreground">
+                <strong>{selectedTransportVendor.name}</strong>
+                {selectedTransportVendor.phone && ` · ${selectedTransportVendor.phone}`}
+                {selectedTransportVendor.address && ` · ${selectedTransportVendor.address}`}
+              </p>
+            )}
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="text-xs font-medium">Courier vendor *</label>
-              <SearchableSelect
-                items={(courierVendors || []) as any[]}
-                value={courierName}
-                onChange={(v) => {
-                  // Find the vendor name from the selected id
-                  const vendor = (courierVendors || []).find((c: any) => c.id === v) as any
-                  setCourierName(vendor?.name || '')
-                }}
-                placeholder="Select courier…"
-                searchPlaceholder="Search courier…"
-                renderItem={(c: any) => ({ label: c.name, sub: c.code })}
-              />
+          <div className="space-y-3 rounded-lg border p-3 bg-card">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Courier Vendor Details
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-medium">Courier Vendor *</label>
+                <SearchableSelect
+                  items={(courierVendors || []) as any[]}
+                  value={courierVendorId}
+                  onChange={onCourierSelect}
+                  placeholder="Select courier…"
+                  searchPlaceholder="Search courier…"
+                  renderItem={(c: any) => ({ label: c.name, sub: c.code })}
+                />
+                {(courierVendors || []).length === 0 && (
+                  <p className="mt-1 text-[11px] text-amber-600">
+                    No couriers yet — add them in Catalog → Courier Vendors
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium">Tracking number</label>
+                <input className={inputClass + ' mt-1 font-mono'} value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} placeholder="SF123456789" />
+              </div>
             </div>
-            <div>
-              <label className="text-xs font-medium">Tracking number</label>
-              <input className={inputClass + ' mt-1 font-mono'} value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} placeholder="SF123456789" />
-            </div>
+            {selectedCourierVendor && (
+              <p className="text-[11px] text-muted-foreground">
+                <strong>{selectedCourierVendor.name}</strong>
+                {selectedCourierVendor.phone && ` · ${selectedCourierVendor.phone}`}
+                {selectedCourierVendor.address && ` · ${selectedCourierVendor.address}`}
+              </p>
+            )}
           </div>
         )}
 

@@ -14,10 +14,13 @@ import { InboundPage } from '@/features/inbound/InboundPage'
 import { OutboundPage } from '@/features/outbound/OutboundPage'
 import { ReportsPage } from '@/features/reports/ReportsPage'
 import { FinancePage } from '@/features/finance/FinancePage'
+import { UsersPage } from '@/features/users/UsersPage'
+import { AuditPage } from '@/features/audit/AuditPage'
+import { SettingsPage } from '@/features/settings/SettingsPage'
 
 const ENABLED_MODULES = new Set([
   'dashboard', 'inventory', 'masters', 'inbound', 'outbound',
-  'reports', 'finance',
+  'reports', 'finance', 'users', 'audit', 'settings',
 ])
 
 export default function Home() {
@@ -48,6 +51,9 @@ export default function Home() {
             {activeModule === 'outbound'   && <OutboundPage />}
             {activeModule === 'reports'    && <ReportsPage />}
             {activeModule === 'finance'    && <FinancePage />}
+            {activeModule === 'users'      && <UsersPage />}
+            {activeModule === 'audit'      && <AuditPage />}
+            {activeModule === 'settings'   && <SettingsPage />}
             {!ENABLED_MODULES.has(activeModule) && <ComingSoon />}
           </AppShell>
         )}

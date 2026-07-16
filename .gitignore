@@ -32,10 +32,15 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
 
+# cloudflare
+.wrangler
+.mf
+.dev.vars
 
 # typescript
 *.tsbuildinfo
@@ -52,3 +57,17 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Local SQLite DB (do not commit local dev database)
+/db/*.db
+/db/*.db-journal
+
+# Uploads (user-supplied assets — should not be in repo)
+/upload/
+
+# Download (generated artifacts)
+/download/
+
+# Scripts artifacts
+/scripts/*.png
+/scripts/output/

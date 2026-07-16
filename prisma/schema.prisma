@@ -1,7 +1,9 @@
 // Whirlpool Bangladesh — WMS (better-edition)
 // Next.js 16 + Prisma + shadcn/ui
-// NOTE: Uses SQLite for local dev. For production (Supabase), change
-// provider to "postgresql" and set DATABASE_URL to Supabase connection string.
+// Supports both SQLite (local dev) and PostgreSQL (Supabase production).
+// Set DATABASE_URL in .env to switch:
+//   - Local:    file:./db/custom.db           → provider = sqlite
+//   - Supabase: postgresql://postgres.[ref]... → provider = postgresql
 // The schema is 100% PostgreSQL-compatible (no SQLite-specific types).
 
 generator client {
@@ -169,7 +171,7 @@ model SalesOrder {
   id              String   @id @default(cuid())
   soNumber        String   @unique
   customerId      String
-  // Workflow: draft → confirmed → picked → scanned → invoiced → partially_dispatched → dispatched → delivered | cancelled
+  // Workflow: draft → confirmed → picked → scanned → ready → partially_dispatched → dispatched → delivered | cancelled
   status          String   @default("draft")
   totalAmount     Float    @default(0)
   orderDate       DateTime @default(now())
@@ -182,9 +184,9 @@ model SalesOrder {
   scannedBy       String?
   scannedAt       DateTime?
   // Step 3: Invoice
-  invoiceNo       String?
-  invoiceDate     DateTime?
-  invoicedBy      String?
+  sapInvoiceRef    String?  // SAP invoice reference (entered manually, not generated)
+  sapInvoiceDate DateTime?
+  readyBy         String?  // who marked ready for dispatch
   cartonCount     Int      @default(0)
   // Steps 4 & 5 are now tracked per-dispatch (see Dispatch model)
   customer        Customer @relation(fields: [customerId], references: [id])
@@ -289,62 +291,6 @@ model CourierVendor {
   address   String?
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
-}
-
-// ───────────────────────────────────────────────
-//  Finance — Requisition, Cash In, Expense
-//  Warehouse sends requisition to HO → money arrives from 3i Logistics →
-//  expenses (procurement + other) tracked → month-end report sent to HO.
-// ───────────────────────────────────────────────
-
-model Requisition {
-  id           String    @id @default(cuid())
-  reqNo        String    @unique   // REQ-2026-00001
-  date         DateTime  @default(now())
-  amount       Float
-  purpose      String
-  status       String    @default("pending") // pending | approved | received | rejected
-  approvedBy   String?
-  approvedAt   DateTime?
-  receivedBy   String?
-  receivedAt   DateTime?
-  notes        String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  cashIns      CashIn[]
-}
-
-model CashIn {
-  id            String    @id @default(cuid())
-  cashInNo      String    @unique   // CIN-2026-00001
-  date          DateTime  @default(now())
-  amount        Float
-  source        String    @default("3i Logistics") // 3i Logistics | Head Office | Bank
-  requisitionId String?
-  receivedBy    String
-  notes         String?
-  createdAt     DateTime  @default(now())
-  requisition   Requisition? @relation(fields: [requisitionId], references: [id])
-}
-
-model Expense {
-  id            String    @id @default(cuid())
-  expenseNo     String    @unique   // EXP-2026-00001
-  date          DateTime  @default(now())
-  type          String    @default("procurement") // procurement | other
-  category      String    // Fuel | Transport | Maintenance | Utilities | Salary | Misc | Procurement
-  beneficiary   String    // who received the payment
-  amount        Float
-  paymentMode   String    @default("cash") // cash | bank | bkash | nagad | cheque
-  memoNo        String?   // physical procurement memo number (warehouse's own)
-  memoDate      DateTime?
-  billNo        String?   // vendor bill/cash memo number
-  billDate      DateTime?
-  receiverName  String?   // who signed the money receipt
-  paidBy        String?
-  notes         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
 }
 
 // ───────────────────────────────────────────────

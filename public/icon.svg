@@ -1,6 +1,18 @@
-<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="96" fill="#0c389f"/>
-  <path d="M 96 320 C 96 192, 192 96, 320 96 C 405 96, 437 144, 437 192 C 437 236, 405 256, 363 256 C 331 256, 320 234, 320 224"
-    stroke="#eeb111" strokeWidth="36" strokeLinecap="round" fill="none"/>
-  <text x="256" y="370" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="190" fontWeight="900" fill="white">W</text>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F0C040"/>
+      <stop offset="1" stop-color="#D89E0A"/>
+    </linearGradient>
+    <radialGradient id="highlight" cx="0.3" cy="0.25" r="0.7">
+      <stop stop-color="#fff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="20" y="20" width="472" height="472" rx="100" fill="#C89105"/>
+  <rect x="36" y="36" width="440" height="440" rx="92" fill="url(#gold)"/>
+  <rect x="36" y="36" width="440" height="440" rx="92" fill="url(#highlight)"/>
+  <text x="256" y="345" font-family="'DejaVu Sans','Liberation Sans',Arial,sans-serif" font-size="280" font-weight="bold" fill="#1C1917" text-anchor="middle">W</text>
+  <rect x="156" y="380" width="200" height="14" rx="7" fill="#1C1917"/>
 </svg>

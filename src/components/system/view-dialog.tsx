@@ -61,7 +61,7 @@ export function ViewDialog({
 }: ViewDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={maxWidth || 'max-w-2xl'} >
+      <DialogContent className={maxWidth || 'max-w-3xl'} showCloseButton={false} >
         <VisuallyHidden>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{subtitle}</DialogDescription>

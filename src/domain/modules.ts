@@ -4,7 +4,7 @@
 
 import {
   LayoutDashboard, Boxes, Database, PackageOpen, Truck,
-  BarChart3, Wallet, type LucideIcon,
+  BarChart3, ClipboardList, Shield, Settings, Wallet, type LucideIcon,
 } from 'lucide-react'
 
 export type ModuleKey =
@@ -14,6 +14,9 @@ export type ModuleKey =
   | 'inbound'
   | 'outbound'
   | 'reports'
+  | 'users'
+  | 'audit'
+  | 'settings'
   | 'finance'
 
 export interface ModuleDef {
@@ -34,6 +37,9 @@ export const MODULES: ModuleDef[] = [
   { key: 'outbound',  label: 'Outbound · Dispatch', shortLabel: 'Outbound', description: 'Pick, scan, invoice, dispatch & POD', icon: Truck,           phase: 4, enabled: true },
   { key: 'reports',   label: 'Reports',             shortLabel: 'Reports',  description: 'Stock valuation, movements & summaries', icon: BarChart3,     phase: 5, enabled: true },
   { key: 'finance',   label: 'Finance',             shortLabel: 'Finance',  description: 'Requisitions, cash in, expenses & HO report', icon: Wallet, phase: 6, enabled: true },
+  { key: 'users',     label: 'User Management',     shortLabel: 'Users',    description: 'Manage staff, roles & permissions',   icon: Shield,          phase: 7, enabled: true },
+  { key: 'audit',     label: 'Audit Log',           shortLabel: 'Audit',    description: 'Immutable activity trail',            icon: ClipboardList,   phase: 8, enabled: true },
+  { key: 'settings',  label: 'Settings',            shortLabel: 'Settings', description: 'Appearance & system settings',        icon: Settings,        phase: 9, enabled: true },
 ]
 
 export function getModule(key: ModuleKey): ModuleDef | undefined {

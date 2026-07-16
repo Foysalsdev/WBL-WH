@@ -1,0 +1,17 @@
+# Cloudflare Pages configuration for WBL-WH
+# Used by `bun run build:cf` and `bun run deploy:cf`
+
+name = "wbl-wh"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".vercel/output/static"
+
+# Environment variables — set via Cloudflare dashboard or:
+#   npx wrangler pages secret put DATABASE_URL --project-name=wbl-wh
+#   npx wrangler pages secret put NEXTAUTH_SECRET --project-name=wbl-wh
+#
+# Do NOT commit secrets to this file.
+
+[vars]
+NEXTAUTH_URL = "https://wbl-wh.pages.dev"
+NODE_ENV = "production"

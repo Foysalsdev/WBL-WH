@@ -26,7 +26,7 @@ interface FormDialogProps {
   submitLabel?: string
   /** Disable submit (e.g. while saving or form invalid) */
   disabled?: boolean
-  /** Override dialog width (default: max-w-lg) */
+  /** Override dialog width (default: max-w-2xl) */
   maxWidth?: string
 }
 
@@ -45,7 +45,7 @@ export function FormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={maxWidth || 'max-w-lg'}>
+      <DialogContent className={maxWidth || 'max-w-2xl'} showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
