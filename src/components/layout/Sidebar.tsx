@@ -27,8 +27,8 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps) {
       {/* Desktop rail */}
       <aside
         className={cn(
-          'hidden md:flex flex-col shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200',
-          sidebarCollapsed ? 'w-[68px]' : 'w-[248px]',
+          'hidden md:flex flex-col shrink-0 border-r border-sidebar-border glass-sidebar text-sidebar-foreground transition-[width] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
+          sidebarCollapsed ? 'w-[72px]' : 'w-[248px]',
         )}
       >
         <SidebarContent
@@ -41,7 +41,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps) {
 
       {/* Mobile drawer */}
       <Sheet open={mobileOpen} onOpenChange={onMobileOpenChange}>
-        <SheetContent side="left" className="w-[260px] p-0 bg-sidebar border-sidebar-border">
+        <SheetContent side="left" className="w-[280px] p-0 glass-sidebar border-sidebar-border">
           <SidebarContent
             collapsed={false}
             active={activeModule}
@@ -110,9 +110,9 @@ function SidebarContent({
               key={m.key}
               onClick={() => onSelect(m.key)}
               className={cn(
-                'group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                'group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium ios-list-item',
                 isActive
-                  ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
+                  ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/20'
                   : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                 collapsed && 'justify-center',
                 !m.enabled && 'opacity-50 cursor-not-allowed',
@@ -121,7 +121,7 @@ function SidebarContent({
               disabled={!m.enabled}
             >
               <Icon className={cn(
-                'h-5 w-5 shrink-0',
+                'h-5 w-5 shrink-0 ios-icon',
                 !isActive && 'text-sidebar-foreground/60 group-hover:text-sidebar-accent-foreground',
               )} />
               {!collapsed && (

@@ -284,10 +284,156 @@
   /* Number tabular alignment for tables & KPIs */
   .tabular-nums { font-variant-numeric: tabular-nums; }
 
-  /* Subtle backdrop blur for headers/sheets */
+  /* ═══════════════════════════════════════════════════════════════
+     GLASS MORPHISM — iOS / macOS Big Sur inspired
+     ═══════════════════════════════════════════════════════════════ */
+
+  /* Frosted glass — translucent surface with strong blur (like iOS Control Center) */
   .glass {
+    background: color-mix(in oklch, var(--card) 75%, transparent);
+    backdrop-filter: saturate(180%) blur(20px) brightness(1.05);
+    -webkit-backdrop-filter: saturate(180%) blur(20px) brightness(1.05);
+    border: 1px solid color-mix(in oklch, white 20%, transparent);
+    box-shadow:
+      0 1px 0 0 color-mix(in oklch, white 40%, transparent) inset,
+      0 8px 32px -8px rgba(20, 32, 50, 0.18),
+      0 2px 8px -2px rgba(20, 32, 50, 0.08);
+  }
+  .dark .glass {
+    background: color-mix(in oklch, var(--card) 70%, transparent);
+    border-color: color-mix(in oklch, white 8%, transparent);
+    box-shadow:
+      0 1px 0 0 color-mix(in oklch, white 8%, transparent) inset,
+      0 8px 32px -8px rgba(0, 0, 0, 0.5),
+      0 2px 8px -2px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Strong glass — for top bars, sticky headers (more opaque, less blur) */
+  .glass-strong {
+    background: color-mix(in oklch, var(--card) 88%, transparent);
+    backdrop-filter: saturate(180%) blur(30px) brightness(1.02);
+    -webkit-backdrop-filter: saturate(180%) blur(30px) brightness(1.02);
+    border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+  }
+  .dark .glass-strong {
+    background: color-mix(in oklch, var(--card) 85%, transparent);
+  }
+
+  /* Sidebar glass — darker, deeper blur, premium feel */
+  .glass-sidebar {
+    background: color-mix(in oklch, var(--sidebar) 82%, transparent);
+    backdrop-filter: saturate(150%) blur(24px);
+    -webkit-backdrop-filter: saturate(150%) blur(24px);
+  }
+  .dark .glass-sidebar {
+    background: color-mix(in oklch, var(--sidebar) 78%, transparent);
+  }
+
+  /* Glass card — for stat cards, content cards (subtle, refined) */
+  .glass-card {
+    background: color-mix(in oklch, var(--card) 80%, transparent);
+    backdrop-filter: saturate(180%) blur(16px);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
+    border: 1px solid color-mix(in oklch, white 15%, var(--border));
+    box-shadow:
+      0 1px 0 0 color-mix(in oklch, white 30%, transparent) inset,
+      0 4px 16px -4px rgba(20, 32, 50, 0.08);
+    transition:
+      transform var(--duration-base) var(--ease-spring),
+      box-shadow var(--duration-base) var(--ease-spring),
+      background-color var(--duration-base) var(--ease-out);
+  }
+  .glass-card:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 1px 0 0 color-mix(in oklch, white 30%, transparent) inset,
+      0 12px 28px -6px rgba(20, 32, 50, 0.15),
+      0 4px 12px -3px rgba(20, 32, 50, 0.08);
+  }
+  .dark .glass-card {
+    border-color: color-mix(in oklch, white 6%, var(--border));
+    box-shadow:
+      0 1px 0 0 color-mix(in oklch, white 6%, transparent) inset,
+      0 4px 16px -4px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Glass pill — for badges, chips (small frosted elements) */
+  .glass-pill {
+    background: color-mix(in oklch, var(--card) 70%, transparent);
     backdrop-filter: saturate(180%) blur(12px);
     -webkit-backdrop-filter: saturate(180%) blur(12px);
+    border: 1px solid color-mix(in oklch, white 20%, transparent);
+  }
+  .dark .glass-pill {
+    background: color-mix(in oklch, var(--card) 65%, transparent);
+    border-color: color-mix(in oklch, white 8%, transparent);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     iOS-STYLE SPRING ANIMATIONS — smooth, bouncy, natural
+     ═══════════════════════════════════════════════════════════════ */
+
+  /* Spring easing — like iOS app open/close */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-ios: cubic-bezier(0.4, 0.0, 0.2, 1);
+  --ease-ios-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  /* Smooth scale-in — iOS modal presentation */
+  .animate-ios-scale {
+    animation: ios-scale 320ms var(--ease-spring);
+  }
+  @keyframes ios-scale {
+    from { opacity: 0; transform: scale(0.92) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  /* iOS sheet slide-up — bottom sheet style */
+  .animate-ios-sheet {
+    animation: ios-sheet 380ms var(--ease-ios-out);
+  }
+  @keyframes ios-sheet {
+    from { opacity: 0; transform: translateY(40px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* iOS fade + slight scale — for popovers, dropdowns */
+  .animate-ios-fade {
+    animation: ios-fade 200ms var(--ease-ios-out);
+  }
+  @keyframes ios-fade {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  /* iOS button press — subtle scale-down on active */
+  .ios-press {
+    transition:
+      transform 120ms var(--ease-ios),
+      background-color 150ms var(--ease-out),
+      box-shadow 150ms var(--ease-out);
+  }
+  .ios-press:active {
+    transform: scale(0.97);
+  }
+
+  /* iOS list item — smooth hover + active state */
+  .ios-list-item {
+    transition:
+      background-color 150ms var(--ease-out),
+      transform 120ms var(--ease-ios);
+  }
+  .ios-list-item:active {
+    transform: scale(0.99);
+    background-color: color-mix(in oklch, var(--muted) 80%, transparent);
+  }
+
+  /* Smooth icon transition — for nav items, buttons with icons */
+  .ios-icon {
+    transition: transform 200ms var(--ease-spring);
+  }
+  .group:hover .ios-icon,
+  button:hover .ios-icon {
+    transform: scale(1.08);
   }
 
   /* Premium card with subtle top accent — gives the surface depth */

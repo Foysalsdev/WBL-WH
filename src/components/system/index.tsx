@@ -70,7 +70,7 @@ interface StatCardProps {
 
 export function StatCard({ label, value, hint, icon: Icon, tone = 'default', trend }: StatCardProps) {
   return (
-    <div className="group relative overflow-hidden rounded-xl border bg-card p-3 md:p-5 transition-all hover:shadow-md hover:-translate-y-0.5">
+    <div className="group relative overflow-hidden rounded-xl glass-card p-3 md:p-5">
       {/* Subtle tone-colored glow in top-right */}
       <div className={cn(
         'absolute -top-6 -right-6 h-20 w-20 rounded-full blur-2xl opacity-40 transition-opacity group-hover:opacity-70',

@@ -61,26 +61,26 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 md:h-16 items-center gap-2 md:gap-3 border-b bg-background/80 glass px-2 md:px-6 shrink-0">
+    <header className="sticky top-0 z-30 flex h-14 md:h-16 items-center gap-2 md:gap-3 border-b border-border/60 glass-strong px-2 md:px-6 shrink-0">
       {/* Mobile menu */}
       <Button
-        variant="ghost" size="icon" className="md:hidden shrink-0"
+        variant="ghost" size="icon" className="md:hidden shrink-0 ios-press"
         onClick={onOpenMobileSidebar} aria-label="Open menu"
       >
         <Menu className="h-5 w-5" />
       </Button>
 
-      {/* Search trigger — compact on mobile */}
+      {/* Search trigger — compact on mobile, glass pill on desktop */}
       <button
         onClick={() => setCommandOpen(true)}
-        className="group flex items-center gap-2 md:gap-3 h-9 md:h-10 flex-1 md:flex-none md:w-full md:max-w-md rounded-lg bg-muted/60 px-2 md:px-3 text-sm text-muted-foreground hover:bg-muted transition-colors"
+        className="group flex items-center gap-2 md:gap-3 h-9 md:h-10 flex-1 md:flex-none md:w-full md:max-w-md rounded-xl glass-pill px-2 md:px-3.5 text-sm text-muted-foreground ios-list-item hover:text-foreground"
       >
-        <Search className="h-4 w-4 shrink-0" />
+        <Search className="h-4 w-4 shrink-0 ios-icon" />
         <span className="flex-1 text-left truncate hidden sm:inline">
           Search SKUs, orders, dealers…
         </span>
         <span className="flex-1 text-left sm:hidden">Search…</span>
-        <kbd className="hidden md:inline-flex items-center gap-1 rounded border bg-background px-1.5 py-0.5 text-[10px] font-mono shrink-0">
+        <kbd className="hidden md:inline-flex items-center gap-1 rounded-md border bg-background/80 px-1.5 py-0.5 text-[10px] font-mono shrink-0">
           ⌘K
         </kbd>
       </button>
@@ -90,7 +90,7 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
       {/* Actions */}
       <div className="flex items-center gap-1 md:gap-1.5 shrink-0">
         <Button
-          variant="ghost" size="sm" className="hidden lg:inline-flex gap-2 text-muted-foreground"
+          variant="ghost" size="sm" className="hidden lg:inline-flex gap-2 text-muted-foreground ios-press"
           onClick={reseed} disabled={reseeding}
           title="Reset demo data"
         >
@@ -100,16 +100,16 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
 
         <Button
           variant="ghost" size="icon" aria-label="Notifications"
-          className="relative h-9 w-9"
+          className="relative h-9 w-9 ios-press"
           onClick={() => setNotificationsOpen(true)}
         >
           <Bell className="h-4 md:h-5 w-4 md:w-5" />
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-accent" />
+          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-accent ring-2 ring-background" />
         </Button>
 
         <Button
           variant="ghost" size="icon" aria-label="Toggle theme"
-          className="h-9 w-9"
+          className="h-9 w-9 ios-press"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         >
           {mounted && theme === 'dark' ? <Sun className="h-4 md:h-5 w-4 md:w-5" /> : <Moon className="h-4 md:h-5 w-4 md:w-5" />}
@@ -118,7 +118,7 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
         <Separator orientation="vertical" className="mx-1 h-7 hidden sm:block" />
 
         <div className="flex items-center gap-2 pl-0 sm:pl-1">
-          <Avatar className="h-8 md:h-9 w-8 md:w-9 border shrink-0">
+          <Avatar className="h-8 md:h-9 w-8 md:w-9 border border-border/60 shrink-0 ring-2 ring-background/50">
             <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-xs">
               {user ? initials(user.name) : '?'}
             </AvatarFallback>
@@ -133,7 +133,7 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 text-muted-foreground hover:text-destructive"
+          className="h-9 w-9 text-muted-foreground hover:text-destructive ios-press"
           onClick={() => {
             useAuth.getState().logout()
             window.location.reload()

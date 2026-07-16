@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Glass Effect Preview</title>
+<style>
+  :root {
+    --background: oklch(0.985 0.002 240);
+    --foreground: oklch(0.15 0.02 264);
+    --card: oklch(1 0 0);
+    --border: oklch(0.90 0.005 240);
+    --muted: oklch(0.96 0.005 240);
+    --primary: oklch(0.43 0.18 264);
+    --accent: oklch(0.83 0.16 84);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, oklch(0.985 0.002 240) 0%, oklch(0.96 0.005 240) 100%);
+    color: var(--foreground);
+    min-height: 100vh;
+    padding: 32px;
+    position: relative;
+    overflow-x: hidden;
+  }
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb-1 { top: -100px; right: -100px; width: 400px; height: 400px;
+    background: oklch(0.43 0.18 264 / 0.12); }
+  .orb-2 { top: 50%; left: -100px; width: 300px; height: 300px;
+    background: oklch(0.83 0.16 84 / 0.15); }
+  .orb-3 { bottom: -100px; right: 30%; width: 350px; height: 350px;
+    background: oklch(0.55 0.14 220 / 0.10); }
+  .container { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.02em; }
+  .subtitle { color: oklch(0.45 0.025 264); margin-bottom: 32px; font-size: 14px; }
+  .glass {
+    background: color-mix(in oklch, var(--card) 75%, transparent);
+    backdrop-filter: saturate(180%) blur(20px) brightness(1.05);
+    -webkit-backdrop-filter: saturate(180%) blur(20px) brightness(1.05);
+    border: 1px solid color-mix(in oklch, white 20%, transparent);
+    box-shadow:
+      0 1px 0 0 color-mix(in oklch, white 40%, transparent) inset,
+      0 8px 32px -8px rgba(20, 32, 50, 0.18),
+      0 2px 8px -2px rgba(20, 32, 50, 0.08);
+  }
+  .glass-strong {
+    background: color-mix(in oklch, var(--card) 88%, transparent);
+    backdrop-filter: saturate(180%) blur(30px) brightness(1.02);
+    -webkit-backdrop-filter: saturate(180%) blur(30px) brightness(1.02);
+    border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+  }
+  .glass-card {
+    background: color-mix(in oklch, var(--card) 80%, transparent);
+    backdrop-filter: saturate(180%) blur(16px);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
+    border: 1px solid color-mix(in oklch, white 15%, var(--border));
+    box-shadow:
+      0 1px 0 0 color-mix(in oklch, white 30%, transparent) inset,
+      0 4px 16px -4px rgba(20, 32, 50, 0.08);
+    transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    border-radius: 12px;
+  }
+  .glass-card:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 1px 0 0 color-mix(in oklch, white 30%, transparent) inset,
+      0 12px 28px -6px rgba(20, 32, 50, 0.15);
+  }
+  .glass-pill {
+    background: color-mix(in oklch, var(--card) 70%, transparent);
+    backdrop-filter: saturate(180%) blur(12px);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+    border: 1px solid color-mix(in oklch, white 20%, transparent);
+    border-radius: 12px;
+  }
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 16px;
+    margin-bottom: 24px;
+  }
+  .search-pill {
+    flex: 1;
+    height: 40px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: oklch(0.45 0.025 264);
+    font-size: 14px;
+  }
+  .kbd {
+    margin-left: auto;
+    padding: 2px 8px;
+    background: rgba(255,255,255,0.5);
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 11px;
+  }
+  .btn-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: grid; place-items: center;
+    border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer;
+    transition: transform 150ms, background 150ms;
+  }
+  .btn-icon:hover { background: oklch(0.96 0.005 240); }
+  .btn-icon:active { transform: scale(0.95); }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card { padding: 20px; position: relative; overflow: hidden; }
+  .stat-glow {
+    position: absolute;
+    top: -20px; right: -20px;
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    filter: blur(30px);
+    opacity: 0.4;
+  }
+  .stat-glow.blue { background: oklch(0.43 0.18 264); }
+  .stat-glow.gold { background: oklch(0.83 0.16 84); }
+  .stat-glow.green { background: oklch(0.55 0.16 150); }
+  .stat-glow.rose { background: oklch(0.6 0.22 18); }
+  .stat-label {
+    font-size: 12px;
+    color: oklch(0.45 0.025 264);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .stat-icon {
+    position: absolute; top: 20px; right: 20px;
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: grid; place-items: center;
+  }
+  .stat-icon.blue { background: oklch(0.43 0.18 264 / 0.1); color: oklch(0.43 0.18 264); }
+  .stat-icon.gold { background: oklch(0.83 0.16 84 / 0.15); color: oklch(0.65 0.16 84); }
+  .stat-icon.green { background: oklch(0.55 0.16 150 / 0.1); color: oklch(0.55 0.16 150); }
+  .stat-icon.rose { background: oklch(0.6 0.22 18 / 0.1); color: oklch(0.6 0.22 18); }
+  .panel { padding: 24px; border-radius: 16px; margin-bottom: 24px; }
+  .panel-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: oklch(0.45 0.025 264);
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+  .table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .table th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: oklch(0.45 0.025 264);
+    font-weight: 600;
+    border-bottom: 1px solid oklch(0.90 0.005 240);
+  }
+  .table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid oklch(0.95 0.005 240);
+  }
+  .badge {
+    display: inline-flex;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    border: 1px solid;
+  }
+  .badge-emerald { background: oklch(0.55 0.16 150 / 0.1); color: oklch(0.45 0.16 150); border-color: oklch(0.55 0.16 150 / 0.3); }
+  .badge-amber { background: oklch(0.70 0.18 60 / 0.1); color: oklch(0.55 0.18 60); border-color: oklch(0.70 0.18 60 / 0.3); }
+  .badge-sky { background: oklch(0.55 0.14 200 / 0.1); color: oklch(0.45 0.14 200); border-color: oklch(0.55 0.14 200 / 0.3); }
+  .btn-primary {
+    padding: 8px 16px;
+    background: oklch(0.43 0.18 264);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+  .btn-primary:hover {
+    background: oklch(0.43 0.18 264 / 0.9);
+    box-shadow: 0 4px 12px oklch(0.43 0.18 264 / 0.3);
+    transform: translateY(-1px);
+  }
+  .btn-primary:active { transform: scale(0.97); }
+  .btn-outline {
+    padding: 8px 16px;
+    background: color-mix(in oklch, white 60%, transparent);
+    backdrop-filter: blur(8px);
+    border: 1px solid oklch(0.90 0.005 240);
+    color: var(--foreground);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 150ms;
+  }
+  .btn-outline:hover { background: oklch(0.96 0.005 240); }
+  .btn-outline:active { transform: scale(0.97); }
+</style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="container">
+    <h1>iOS-Style Glass UI · WBL-WH</h1>
+    <p class="subtitle">Frosted glass surfaces with smooth spring animations — like iOS Control Center</p>
+    <div class="toolbar glass-strong">
+      <div class="search-pill glass-pill">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <span>Search SKUs, orders, dealers…</span>
+        <span class="kbd">⌘K</span>
+      </div>
+      <button class="btn-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      </button>
+      <button class="btn-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </button>
+      <div style="width: 36px; height: 36px; border-radius: 50%; background: oklch(0.43 0.18 264); color: white; display: grid; place-items: center; font-weight: 600; font-size: 12px;">SA</div>
+    </div>
+    <div class="stats-grid">
+      <div class="glass-card stat-card">
+        <div class="stat-glow blue"></div>
+        <div class="stat-icon blue">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+        </div>
+        <div class="stat-label">Total Products</div>
+        <div class="stat-value">1,248</div>
+      </div>
+      <div class="glass-card stat-card">
+        <div class="stat-glow gold"></div>
+        <div class="stat-icon gold">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <div class="stat-label">Stock Value</div>
+        <div class="stat-value">TK 48.2L</div>
+      </div>
+      <div class="glass-card stat-card">
+        <div class="stat-glow green"></div>
+        <div class="stat-icon green">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        </div>
+        <div class="stat-label">Sales Today</div>
+        <div class="stat-value">TK 2.4L</div>
+      </div>
+      <div class="glass-card stat-card">
+        <div class="stat-glow rose"></div>
+        <div class="stat-icon rose">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="stat-label">Low Stock</div>
+        <div class="stat-value">12</div>
+      </div>
+    </div>
+    <div class="panel glass">
+      <div class="panel-title">Recent Dispatches</div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Dispatch No</th>
+            <th>Date</th>
+            <th>Dealer</th>
+            <th>Vehicle</th>
+            <th>Status</th>
+            <th style="text-align: right;">Units</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-family: monospace; font-weight: 600;">DSP-2026-00012</td>
+            <td>17 Jul 2026</td>
+            <td>Metro Electronics</td>
+            <td style="font-family: monospace;">DHK TA 11-2211</td>
+            <td><span class="badge badge-emerald">delivered</span></td>
+            <td style="text-align: right; font-weight: 600;">42</td>
+          </tr>
+          <tr>
+            <td style="font-family: monospace; font-weight: 600;">DSP-2026-00011</td>
+            <td>17 Jul 2026</td>
+            <td>Transcom Digital</td>
+            <td>Steadfast</td>
+            <td><span class="badge badge-amber">pending</span></td>
+            <td style="text-align: right; font-weight: 600;">18</td>
+          </tr>
+          <tr>
+            <td style="font-family: monospace; font-weight: 600;">DSP-2026-00010</td>
+            <td>16 Jul 2026</td>
+            <td>Best Electronics</td>
+            <td style="font-family: monospace;">DHK TA 12-3322</td>
+            <td><span class="badge badge-sky">dispatched</span></td>
+            <td style="text-align: right; font-weight: 600;">25</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="display: flex; gap: 12px; padding: 24px; border-radius: 16px;" class="glass">
+      <button class="btn-primary">+ New Dispatch</button>
+      <button class="btn-outline">Export</button>
+      <button class="btn-outline">Print PDF</button>
+    </div>
+  </div>
+</body>
+</html>
