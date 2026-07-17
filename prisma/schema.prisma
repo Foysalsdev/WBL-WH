@@ -320,6 +320,55 @@ model CourierVendor {
 }
 
 // ───────────────────────────────────────────────
+//  Returns / Exchanges / Replacements
+//  Customer returns an item (damaged/wrong/unsatisfied)
+//  → Choose: refund, exchange for another product, or replacement
+// ───────────────────────────────────────────────
+
+model Return {
+  id              String   @id @default(cuid())
+  returnNo        String   @unique  // RTN-2026-00001
+  date            DateTime @default(now())
+  soId            String?  // linked Sales Order (if from a sale)
+  dispatchId      String?  // linked Dispatch (if specific trip)
+  customerId      String
+  reason          String   // damaged | wrong_item | warranty | unsatisfied | other
+  reasonDetails   String?
+  returnType      String   // refund | exchange | replacement
+  status          String   @default("pending") // pending | processed | rejected
+  processedBy     String?
+  processedAt     DateTime?
+  refundAmount    Float    @default(0)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items           ReturnItem[]
+
+  @@index([customerId])
+  @@index([soId])
+  @@index([status])
+  @@index([date])
+}
+
+model ReturnItem {
+  id              String   @id @default(cuid())
+  returnId        String
+  productId       String   // product being returned
+  quantity        Int      // qty returned
+  condition       String   @default("good") // good | damaged | defective
+  // For exchange: which product is being given in exchange
+  exchangeProductId String?
+  exchangeQuantity  Int    @default(0)
+  // For refund: how much to refund per unit
+  refundPerUnit   Float    @default(0)
+  return          Return   @relation(fields: [returnId], references: [id], onDelete: Cascade)
+
+  @@index([returnId])
+  @@index([productId])
+}
+
+// ───────────────────────────────────────────────
 //  Audit trail
 // ───────────────────────────────────────────────
 

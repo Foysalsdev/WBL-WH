@@ -49,6 +49,18 @@ export async function POST(req: NextRequest) {
   try {
     const { customerId, orderDate, deliveryDate, notes, items } = parsed.data
 
+    // Validate stock availability for all items
+    for (const item of items) {
+      const stock = await db.stock.findUnique({ where: { productId: item.productId } })
+      const available = stock ? (stock.quantity - stock.reserved) : 0
+      if (item.quantity > available) {
+        const product = await db.product.findUnique({ where: { id: item.productId }, select: { sku: true, name: true } })
+        return NextResponse.json({
+          error: `Insufficient stock for ${product?.sku || item.productId} (${product?.name || ''}) — ordered ${item.quantity}, only ${available} available`,
+        }, { status: 422 })
+      }
+    }
+
     const year = new Date().getFullYear()
     const count = await db.salesOrder.count({ where: { soNumber: { startsWith: `SO-${year}-` } } })
     const soNumber = `SO-${year}-${String(count + 1).padStart(5, '0')}`
@@ -93,22 +105,57 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json(updated)
   }
 
-  // ─── action: 'pick' — Step 1: record picked quantities ───
+  // ─── action: 'pick' — Step 1: record picked quantities + reserve stock ───
   if (action === 'pick') {
     const { pickedBy, items: pickItems } = body as any
-    const so = await db.salesOrder.findUnique({ where: { id }, include: { items: true } })
+    const so = await db.salesOrder.findUnique({ where: { id }, include: { items: { include: { product: { include: { stock: true } } } } } })
     if (!so) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     if (so.status !== 'confirmed') {
       return NextResponse.json({ error: `Cannot pick in '${so.status}' status — must be 'confirmed'` }, { status: 400 })
     }
+
+    // Validate: cannot pick more than available stock (quantity - already reserved)
     for (const pi of pickItems) {
-      await db.salesOrderItem.update({ where: { id: pi.id }, data: { pickedQty: Number(pi.pickedQty) } })
+      const soItem = so.items.find((it) => it.id === pi.id)
+      if (!soItem) continue
+      const stock = soItem.product?.stock
+      if (!stock) {
+        return NextResponse.json({ error: `No stock record for ${soItem.product?.sku}` }, { status: 400 })
+      }
+      const available = stock.quantity - stock.reserved
+      if (Number(pi.pickedQty) > available) {
+        return NextResponse.json({
+          error: `Cannot pick ${pi.pickedQty} units of ${soItem.product?.sku} — only ${available} available (${stock.quantity} on hand, ${stock.reserved} already reserved)`,
+        }, { status: 400 })
+      }
     }
+
+    // Update pickedQty + reserve stock
+    for (const pi of pickItems) {
+      const soItem = so.items.find((it) => it.id === pi.id)
+      if (!soItem) continue
+      const pickQty = Number(pi.pickedQty)
+
+      await db.salesOrderItem.update({
+        where: { id: pi.id },
+        data: { pickedQty: pickQty },
+      })
+
+      // Reserve stock
+      const stock = await db.stock.findUnique({ where: { productId: soItem.productId } })
+      if (stock) {
+        await db.stock.update({
+          where: { productId: soItem.productId },
+          data: { reserved: stock.reserved + pickQty },
+        })
+      }
+    }
+
     await db.salesOrder.update({
       where: { id },
       data: { status: 'picked', pickedBy: pickedBy || so.pickedBy, pickedAt: new Date() },
     })
-    await auditLog('POST', 'SalesOrder', so.id, user, `${so.soNumber} picked`)
+    await auditLog('POST', 'SalesOrder', so.id, user, `${so.soNumber} picked — stock reserved`)
     return NextResponse.json({ ok: true, status: 'picked' })
   }
 
@@ -131,29 +178,30 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ ok: true, status: 'scanned' })
   }
 
-  // ─── action: 'invoice' — Step 3: generate invoice ───
+  // ─── action: 'invoice' — Step 3: record SAP invoice reference ───
   if (action === 'invoice') {
-    const { invoicedBy, cartonCount, sapInvoiceRef } = body as any
+    const { readyBy, cartonCount, sapInvoiceRef } = body as any
     const so = await db.salesOrder.findUnique({ where: { id } })
     if (!so) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     if (so.status !== 'scanned') {
       return NextResponse.json({ error: `Cannot invoice in '${so.status}' status — must be 'scanned'` }, { status: 400 })
     }
-    const year = new Date().getFullYear()
-    const count = await db.salesOrder.count({ where: { sapInvoiceRef: { startsWith: `INV-${year}-` } } })
-    const finalInvoiceNo = sapInvoiceRef || `INV-${year}-${String(count + 1).padStart(5, '0')}`
+    // SAP invoice ref is entered manually by user (not auto-generated)
+    if (!sapInvoiceRef) {
+      return NextResponse.json({ error: 'SAP invoice reference is required' }, { status: 422 })
+    }
     await db.salesOrder.update({
       where: { id },
       data: {
-        status: 'invoiced',
-        sapInvoiceRef: finalInvoiceNo,
-        invoiceDate: new Date(),
-        invoicedBy: invoicedBy || so.invoicedBy,
+        status: 'ready',
+        sapInvoiceRef,
+        sapInvoiceDate: new Date(),
+        readyBy: readyBy || so.readyBy,
         cartonCount: Number(cartonCount) || 0,
       },
     })
-    await auditLog('POST', 'SalesOrder', so.id, user, `${so.soNumber} invoiced — ${finalInvoiceNo}`)
-    return NextResponse.json({ ok: true, status: 'invoiced', sapInvoiceRef: finalInvoiceNo })
+    await auditLog('POST', 'SalesOrder', so.id, user, `${so.soNumber} ready — SAP ref ${sapInvoiceRef}`)
+    return NextResponse.json({ ok: true, status: 'ready', sapInvoiceRef })
   }
 
   // ─── action: 'dispatch' — Step 4: partial dispatch with Transport/Courier ───
@@ -172,8 +220,8 @@ export async function PATCH(req: NextRequest) {
 
     const so = await db.salesOrder.findUnique({ where: { id }, include: { items: true } })
     if (!so) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    if (so.status !== 'invoiced' && so.status !== 'partially_dispatched') {
-      return NextResponse.json({ error: `Cannot dispatch in '${so.status}' status — must be 'invoiced' or 'partially_dispatched'` }, { status: 400 })
+    if (so.status !== 'ready' && so.status !== 'partially_dispatched') {
+      return NextResponse.json({ error: `Cannot dispatch in '${so.status}' status — must be 'ready' or 'partially_dispatched'` }, { status: 400 })
     }
     if (!deliveryMethod) return NextResponse.json({ error: 'deliveryMethod is required' }, { status: 400 })
     if (deliveryMethod === 'transport' && !vehicleNo) {
@@ -232,7 +280,7 @@ export async function PATCH(req: NextRequest) {
       },
     })
 
-    // Update deliveredQty on SO items + deduct stock + write movements
+    // Update deliveredQty on SO items + deduct stock + release reservation + write movements
     for (const di of dispatchItems) {
       const qty = Number(di.quantity)
       // Update SO item deliveredQty
@@ -243,12 +291,15 @@ export async function PATCH(req: NextRequest) {
           data: { deliveredQty: soItem.deliveredQty + qty },
         })
       }
-      // Deduct stock
+      // Deduct stock quantity AND release reservation
       const stock = await db.stock.findUnique({ where: { productId: di.productId } })
       if (stock) {
         await db.stock.update({
           where: { productId: di.productId },
-          data: { quantity: Math.max(0, stock.quantity - qty) },
+          data: {
+            quantity: Math.max(0, stock.quantity - qty),
+            reserved: Math.max(0, stock.reserved - qty),
+          },
         })
       }
       // Write movement
