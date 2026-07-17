@@ -369,6 +369,28 @@ model ReturnItem {
 }
 
 // ───────────────────────────────────────────────
+//  Order Timeline — every status change tracked
+//  Gives a complete history of any order (PO/SO/Dispatch)
+// ───────────────────────────────────────────────
+
+model OrderTimeline {
+  id          String   @id @default(cuid())
+  entityType  String   // PurchaseOrder | SalesOrder | Dispatch | Return
+  entityId    String
+  fromStatus  String?
+  toStatus    String
+  action      String   // status_change | create | update | pick | scan | invoice | dispatch | receive | pod
+  userName    String?
+  notes       String?
+  metadata    String?  // JSON string with extra context
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([entityType, createdAt])
+}
+
+// ───────────────────────────────────────────────
 //  Audit trail
 // ───────────────────────────────────────────────
 

@@ -161,3 +161,33 @@ export async function softDelete(model: any, id: string): Promise<void> {
 // ─── Exclude Deleted Records Helper ────────────────────────────
 // Add this to where clauses: where: { ...filters, deletedAt: null }
 export const notDeleted = { deletedAt: null }
+
+// ─── Timeline Helper ───────────────────────────────────────────
+// Log a status change to OrderTimeline (for complete order history)
+export async function logTimeline(
+  entityType: string,
+  entityId: string,
+  fromStatus: string | null,
+  toStatus: string,
+  action: string,
+  user: AuthContext['user'],
+  notes?: string,
+  metadata?: Record<string, any>
+): Promise<void> {
+  try {
+    await db.orderTimeline.create({
+      data: {
+        entityType,
+        entityId,
+        fromStatus,
+        toStatus,
+        action,
+        userName: user?.name || user?.email || 'System',
+        notes: notes || null,
+        metadata: metadata ? JSON.stringify(metadata) : null,
+      },
+    })
+  } catch (e) {
+    console.error('[logTimeline] failed:', e)
+  }
+}
