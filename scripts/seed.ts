@@ -1,5 +1,6 @@
 // Seed script — Whirlpool Bangladesh Warehouse Operations
 import { db } from '../src/lib/db'
+import { hashPassword } from '../src/lib/security'
 
 // ─── RBAC: Role & Permission definitions ─────────────────────────
 const MODULES = ['dashboard', 'inventory', 'masters', 'inbound', 'outbound', 'reports', 'audit', 'users']
@@ -69,14 +70,16 @@ async function main() {
   }
 
   // ── Users (warehouse staff) ──────────────────────────
+  // Default passwords — CHANGE IMMEDIATELY after first login via Profile → Change Password
+  console.log('  Hashing default passwords (bcrypt cost 12)...')
   const admin = await db.user.create({
-    data: { email: 'admin@whirlpool-bd.com', name: 'Foysal Ahmed', role: 'admin', passwordHash: '$2a$10$dummyhash_admin_12345678901234567890123456789012345678901234567890' },
+    data: { email: 'admin@whirlpool-bd.com', name: 'Foysal Ahmed', role: 'admin', passwordHash: await hashPassword('Admin@2026') },
   })
   const manager = await db.user.create({
-    data: { email: 'manager@whirlpool-bd.com', name: 'Sadia Karim', role: 'manager', passwordHash: '$2a$10$dummyhash_manager_123456789012345678901234567890123456789012345' },
+    data: { email: 'manager@whirlpool-bd.com', name: 'Sadia Karim', role: 'manager', passwordHash: await hashPassword('Manager@2026') },
   })
   const grnClerk = await db.user.create({
-    data: { email: 'staff@whirlpool-bd.com', name: 'Rakib Hossain', role: 'staff', passwordHash: '$2a$10$dummyhash_staff_12345678901234567890123456789012345678901234567890' },
+    data: { email: 'staff@whirlpool-bd.com', name: 'Rakib Hossain', role: 'staff', passwordHash: await hashPassword('Staff@2026') },
   })
 
   // ── Suppliers (Whirlpool sourcing entities) ──────────
@@ -523,6 +526,18 @@ async function main() {
   console.log(`   2 warehouses, 48 locations, ${products.length} Whirlpool SKUs`)
   console.log(`   4 POs (1 received, 1 partial, 1 ordered, 1 draft), 5 SOs (delivered/shipped/packed/picked/confirmed)`)
   console.log(`   ${products.length + 10} stock movements`)
+  console.log('')
+  console.log('═══════════════════════════════════════════════════════════════')
+  console.log('  DEFAULT LOGIN CREDENTIALS (change immediately after login!)')
+  console.log('═══════════════════════════════════════════════════════════════')
+  console.log('  👑 Admin    admin@whirlpool-bd.com    / Admin@2026')
+  console.log('  📋 Manager  manager@whirlpool-bd.com  / Manager@2026')
+  console.log('  📦 Staff    staff@whirlpool-bd.com    / Staff@2026')
+  console.log('═══════════════════════════════════════════════════════════════')
+  console.log('')
+  console.log('⚠️  CHANGE ALL PASSWORDS IMMEDIATELY after first login!')
+  console.log('    Profile → Change Password')
+  console.log('')
   console.log('🌱 Done.')
 }
 

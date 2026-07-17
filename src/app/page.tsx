@@ -6,6 +6,7 @@ import { QueryProvider } from '@/lib/api/query-provider'
 import { AppShell } from '@/components/layout/AppShell'
 import { useUI } from '@/lib/store/ui'
 import { useAuth } from '@/lib/auth/session'
+import { setLogoutHandler } from '@/lib/api/client'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { InventoryPage } from '@/features/inventory/InventoryPage'
@@ -27,6 +28,15 @@ export default function Home() {
   const activeModule = useUI((s) => s.activeModule)
   const setActiveModule = useUI((s) => s.setActiveModule)
   const isAuthenticated = useAuth((s) => s.isAuthenticated)
+  const logout = useAuth((s) => s.logout)
+
+  // Register 401 handler with API client — auto-logout on token expiry
+  useEffect(() => {
+    setLogoutHandler(() => {
+      logout()
+      window.location.reload()
+    })
+  }, [logout])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)

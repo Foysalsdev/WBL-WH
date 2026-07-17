@@ -1,0 +1,134 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─── Job 1: Lint + Type Check + Build ─────────────────────────
+  build:
+    name: Build & Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            .next/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bun run db:generate
+        env:
+          DATABASE_URL: file:./db/ci.db
+
+      - name: Lint
+        run: bun run lint
+        continue-on-error: true
+
+      - name: Build
+        run: bun run build
+        env:
+          DATABASE_URL: file:./db/ci.db
+          NEXTAUTH_SECRET: ci-test-secret-not-for-production
+          NEXTAUTH_URL: http://localhost:3000
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: .next/
+          retention-days: 3
+
+  # ─── Job 2: Security Audit ───────────────────────────────────
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Verify .env not tracked
+        run: |
+          if git ls-files | grep -E "^\.env$"; then
+            echo "❌ SECURITY FAILURE: .env file is tracked in git"
+            exit 1
+          fi
+          echo "✅ .env not tracked"
+
+      - name: Verify no hard-coded secrets
+        run: |
+          if grep -rE "(sk_live_|sk_test_|ghp_|AKIA[0-9A-Z]{16})" --include="*.ts" --include="*.tsx" --include="*.js" src/ ; then
+            echo "❌ SECURITY FAILURE: Hard-coded secret detected"
+            exit 1
+          fi
+          echo "✅ No hard-coded secrets"
+
+  # ─── Job 3: Deploy to Cloudflare Pages (main only) ───────────
+  deploy:
+    name: Deploy to Cloudflare Pages
+    needs: [build, security]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Environment must be created in GitHub repo settings
+    environment:
+      name: production
+      url: https://wbl-wh.pages.dev
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bun run db:generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Build for Cloudflare
+        run: bun run build:cf
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: https://wbl-wh.pages.dev
+
+      - name: Deploy
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: wbl-wh
+          directory: .vercel/output/static
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

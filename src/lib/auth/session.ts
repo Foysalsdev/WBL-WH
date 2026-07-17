@@ -2,6 +2,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { setLogoutHandler } from '@/lib/api/client'
 
 // ═══════════════════════════════════════════════════════════════
 //  Auth store — login/logout, user session, RBAC permissions
@@ -74,6 +75,10 @@ export const useAuth = create<AuthState>()(
           permissions: [],
           isAuthenticated: false,
         })
+        // Clear HTTP-only cookie by navigating to logout endpoint
+        if (typeof window !== 'undefined') {
+          fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
+        }
       },
 
       hasPermission: (module, action) => {

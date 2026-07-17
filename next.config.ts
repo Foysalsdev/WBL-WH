@@ -2,12 +2,6 @@ import type { NextConfig } from "next";
 
 // ═══════════════════════════════════════════════════════════════
 //  Next.js Production Configuration
-//  - output: "standalone"  → minimizes server bundle size
-//  - reactStrictMode off   → avoids double-effect issues with Prisma
-//  - images: unoptimized   → Cloudflare Pages doesn't run sharp at runtime
-//  - experimental: serverMinify → smaller JS bundles
-//  - poweredByHeader: off  → don't leak tech stack
-//  - productionBrowserSourceMaps: off → smaller prod bundle
 // ═══════════════════════════════════════════════════════════════
 
 const nextConfig: NextConfig = {
@@ -17,11 +11,9 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: false,
   compress: true,
   images: {
-    // Cloudflare Pages / Vercel Edge doesn't need the sharp optimizer
     unoptimized: true,
   },
   experimental: {
-    // Tree-shake unused server code more aggressively
     optimizePackageImports: [
       'lucide-react',
       '@radix-ui/react-dialog',
@@ -31,27 +23,40 @@ const nextConfig: NextConfig = {
       'recharts',
     ],
   },
-  // Security headers — applied to every response
+  // Security headers — strict production policy
   async headers() {
     return [
       {
         source: '/(.*)',
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options',        value: 'SAMEORIGIN' },
+          { key: 'X-Frame-Options',        value: 'DENY' },
           { key: 'X-XSS-Protection',       value: '1; mode=block' },
           { key: 'Referrer-Policy',        value: 'strict-origin-when-cross-origin' },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()',
+            value: 'camera=(), microphone=(), geolocation=(), browsing-topics=(), payment=()',
           },
           {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',
           },
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "font-src 'self' https://fonts.gstatic.com data:",
+              "img-src 'self' data: blob: https:",
+              "connect-src 'self' https:",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join('; '),
+          },
         ],
       },
-      // Cache static assets aggressively (Next handles hashed filenames)
       {
         source: '/_next/static/(.*)',
         headers: [
@@ -70,12 +75,17 @@ const nextConfig: NextConfig = {
         source: '/manifest.json',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=3600' }],
       },
+      // No-cache for API responses
+      {
+        source: '/api/(.*)',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate' },
+        ],
+      },
     ];
   },
-  // Turbopack is the default bundler in Next.js 16 — minimal config
   turbopack: {},
   typescript: {
-    // Don't fail production build on minor TS warnings — we use safeParse
     ignoreBuildErrors: true,
   },
 };
