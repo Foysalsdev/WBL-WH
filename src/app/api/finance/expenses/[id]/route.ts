@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getUserFromRequest } from '@/lib/security'
+import { auditLog, apiError } from '@/lib/api-middleware'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const body = await req.json()
+  const user = await getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+
+  let body: any
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
 
   const update: any = {}
   const fields = ['type', 'category', 'beneficiary', 'paymentMode', 'memoNo', 'billNo', 'receiverName', 'paidBy', 'notes']
@@ -15,18 +21,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.memoDate) update.memoDate = new Date(body.memoDate)
   if (body.billDate) update.billDate = new Date(body.billDate)
 
-  const e = await db.expense.update({ where: { id }, data: update })
-  await db.auditLog.create({
-    data: { action: 'UPDATE', entity: 'Expense', entityId: id, userName: 'System', details: `Updated ${e.expenseNo}` },
-  })
-  return NextResponse.json(e)
+  try {
+    const e = await db.expense.update({ where: { id }, data: update })
+    await auditLog('UPDATE', 'Expense', id, user, `Updated ${e.expenseNo}`)
+    return NextResponse.json(e)
+  } catch (e) {
+    return apiError(e)
+  }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const e = await db.expense.delete({ where: { id } })
-  await db.auditLog.create({
-    data: { action: 'DELETE', entity: 'Expense', entityId: id, userName: 'System', details: `Deleted ${e.expenseNo}` },
-  })
-  return NextResponse.json({ ok: true })
+  const user = await getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+
+  try {
+    const e = await db.expense.delete({ where: { id } })
+    await auditLog('DELETE', 'Expense', id, user, `Deleted ${e.expenseNo}`)
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    return apiError(e)
+  }
 }

@@ -47,7 +47,10 @@ export async function POST(req: NextRequest) {
   const newHash = await hashPassword(newPassword)
   await db.user.update({
     where: { id: user.id },
-    data: { passwordHash: newHash },
+    data: {
+      passwordHash: newHash,
+      passwordChangedAt: new Date(),
+    },
   })
 
   await auditLog('UPDATE', 'User', user.id, user, 'Password changed')

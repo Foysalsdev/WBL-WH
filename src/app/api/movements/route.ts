@@ -1,33 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { withAuth, withRateLimit, apiError, type AuthContext } from '@/lib/api-middleware'
 
 // GET /api/movements?limit=&productId=&type=
-export async function GET(req: NextRequest) {
-  const limit = Number(req.nextUrl.searchParams.get('limit') || 200)
-  const productId = req.nextUrl.searchParams.get('productId')
-  const type = req.nextUrl.searchParams.get('type')
+export const GET = withRateLimit(
+  withAuth(async (req: NextRequest, ctx: AuthContext) => {
+    try {
+      const sp = req.nextUrl.searchParams
+      const limit = Math.min(parseInt(sp.get('limit') || '100', 10), 1000)
+      const productId = sp.get('productId')
+      const type = sp.get('type')
 
-  const where: any = {}
-  if (productId) where.productId = productId
-  if (type) where.type = type.toUpperCase()
+      const where: any = { product: { deletedAt: null } }
+      if (productId) where.productId = productId
+      if (type && type !== 'ALL') where.type = type
 
-  const movements = await db.movement.findMany({
-    where,
-    take: Math.min(limit, 500),
-    orderBy: { createdAt: 'desc' },
-    include: { product: true },
-  })
-
-  const data = movements.map((m) => ({
-    id: m.id,
-    productId: m.productId,
-    type: m.type,
-    quantity: m.quantity,
-    reference: m.reference,
-    notes: m.notes,
-    createdAt: m.createdAt,
-    product: { sku: m.product.sku, name: m.product.name, category: m.product.category },
-  }))
-
-  return NextResponse.json(data)
-}
+      const movements = await db.movement.findMany({
+        where,
+        include: { product: true },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+      })
+      return NextResponse.json(movements)
+    } catch (e) {
+      return apiError(e)
+    }
+  }),
+  { windowMs: 60_000, maxRequests: 60, keyPrefix: 'movements-list' }
+)

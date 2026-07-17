@@ -1,24 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { withAuth, withValidation, withRateLimit, auditLog, apiError, notDeleted, type AuthContext } from '@/lib/api-middleware'
+import { z } from 'zod'
 
-// GET /api/courier-vendors
-export async function GET(req: NextRequest) {
-  const search = req.nextUrl.searchParams.get('search')?.trim()
-  const where: any = {}
-  if (search) {
-    where.OR = [
-      { code: { contains: search } },
-      { name: { contains: search } },
-    ]
-  }
-  const vendors = await db.courierVendor.findMany({ where, orderBy: { createdAt: 'desc' } })
-  return NextResponse.json(vendors)
-}
+const CourierVendorInputSchema = z.object({
+  code: z.string().min(1).max(32).trim(),
+  name: z.string().min(1).max(255).trim(),
+  phone: z.string().max(32).optional().nullable(),
+  address: z.string().max(500).optional().nullable(),
+  active: z.boolean().default(true),
+})
 
-// POST /api/courier-vendors
-export async function POST(req: NextRequest) {
-  const body = await req.json()
-  const vendor = await db.courierVendor.create({ data: body })
-  await db.auditLog.create({ data: { action: 'CREATE', entity: 'CourierVendor', entityId: vendor.id, userName: 'System', details: `Created ${vendor.code} — ${vendor.name}` } })
-  return NextResponse.json(vendor, { status: 201 })
-}
+export const GET = withRateLimit(
+  withAuth(async (req: NextRequest, ctx: AuthContext) => {
+    try {
+      const q = req.nextUrl.searchParams.get('search')?.trim()
+      const where = { ...notDeleted, ...(q ? { OR: [
+        { code: { contains: q } }, { name: { contains: q } }, { phone: { contains: q } }
+      ] } : {}) }
+      const vendors = await db.courierVendor.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+      })
+      return NextResponse.json(vendors)
+    } catch (e) {
+      return apiError(e)
+    }
+  }),
+  { windowMs: 60_000, maxRequests: 60, keyPrefix: 'courier-vendors-list' }
+)
+
+export const POST = withAuth(
+  withValidation(CourierVendorInputSchema, async (req: NextRequest, data, ctx: AuthContext) => {
+    try {
+      const existing = await db.courierVendor.findUnique({ where: { code: data.code } })
+      if (existing && !existing.deletedAt) {
+        return NextResponse.json({ error: `Vendor with code '${data.code}' already exists` }, { status: 409 })
+      }
+      const vendor = await db.courierVendor.create({ data })
+      await auditLog('CREATE', 'CourierVendor', vendor.id, ctx.user, `Created ${vendor.code} — ${vendor.name}`)
+      return NextResponse.json(vendor, { status: 201 })
+    } catch (e: any) {
+      if (e?.code === 'P2002') return NextResponse.json({ error: 'Vendor code already exists' }, { status: 409 })
+      return apiError(e)
+    }
+  }),
+  { required: true, module: 'masters', action: 'create' }
+)

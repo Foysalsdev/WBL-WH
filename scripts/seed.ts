@@ -294,7 +294,7 @@ async function main() {
       notes: 'Bashundhara City monthly showroom restock',
       pickedBy: grnClerk.name, pickedAt: new Date('2026-06-30'),
       scannedBy: grnClerk.name, scannedAt: new Date('2026-06-30'),
-      invoiceNo: 'INV-2026-00001', invoiceDate: new Date('2026-06-30'), invoicedBy: manager.name, cartonCount: 12,
+      sapInvoiceRef: 'INV-2026-00001', sapInvoiceDate: new Date('2026-06-30'), readyBy: manager.name, cartonCount: 12,
       items: {
         create: [
           { productId: products[0].id, quantity: 5, unitPrice: 94500, pickedQty: 5, scannedQty: 5, deliveredQty: 5 },
@@ -334,7 +334,7 @@ async function main() {
       notes: 'Transcom corporate bulk order',
       pickedBy: grnClerk.name, pickedAt: new Date('2026-07-11'),
       scannedBy: grnClerk.name, scannedAt: new Date('2026-07-11'),
-      invoiceNo: 'INV-2026-00002', invoiceDate: new Date('2026-07-11'), invoicedBy: manager.name, cartonCount: 8,
+      sapInvoiceRef: 'INV-2026-00002', sapInvoiceDate: new Date('2026-07-11'), readyBy: manager.name, cartonCount: 8,
       items: {
         create: [
           { productId: products[7].id, quantity: 3, unitPrice: 94500, pickedQty: 3, scannedQty: 3, deliveredQty: 3 },
@@ -372,7 +372,7 @@ async function main() {
       notes: 'Chittagong branch transfer — partial dispatch, remaining via courier',
       pickedBy: grnClerk.name, pickedAt: new Date('2026-07-14'),
       scannedBy: grnClerk.name, scannedAt: new Date('2026-07-14'),
-      invoiceNo: 'INV-2026-00003', invoiceDate: new Date('2026-07-14'), invoicedBy: manager.name, cartonCount: 15,
+      sapInvoiceRef: 'INV-2026-00003', sapInvoiceDate: new Date('2026-07-14'), readyBy: manager.name, cartonCount: 15,
       items: {
         create: [
           { productId: products[1].id, quantity: 10, unitPrice: 52800, pickedQty: 10, scannedQty: 10, deliveredQty: 10 },
@@ -472,7 +472,7 @@ async function main() {
       notes: 'Star Tech — invoiced, ready for dispatch',
       pickedBy: grnClerk.name, pickedAt: new Date('2026-07-16'),
       scannedBy: grnClerk.name, scannedAt: new Date('2026-07-16'),
-      invoiceNo: 'INV-2026-00004', invoiceDate: new Date('2026-07-16'), invoicedBy: manager.name, cartonCount: 5,
+      sapInvoiceRef: 'INV-2026-00004', sapInvoiceDate: new Date('2026-07-16'), readyBy: manager.name, cartonCount: 5,
       items: {
         create: [
           { productId: products[12].id, quantity: 20, unitPrice: 4400, pickedQty: 20, scannedQty: 20 },

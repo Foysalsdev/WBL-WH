@@ -20,15 +20,25 @@ datasource db {
 // ───────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String
-  passwordHash String?
-  role         String   @default("staff") // admin | manager | staff | viewer
-  avatar       String?
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  name                  String
+  passwordHash          String?
+  role                  String    @default("staff") // admin | manager | staff | viewer
+  avatar                String?
+  active                Boolean   @default(true)
+  // Audit fields for security
+  passwordChangedAt     DateTime?
+  lastLoginAt           DateTime?
+  failedLoginAttempts   Int       @default(0)
+  lockedUntil           DateTime?
+  // Soft delete
+  deletedAt             DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([active])
+  @@index([deletedAt])
 }
 
 model Customer {
@@ -60,36 +70,44 @@ model Supplier {
 // ───────────────────────────────────────────────
 
 model Product {
-  id           String   @id @default(cuid())
-  sku          String   @unique
+  id           String    @id @default(cuid())
+  sku          String    @unique
   name         String
   category     String?
   description  String?
-  unit         String   @default("pcs")
+  unit         String    @default("pcs")
   barcode      String?
-  costPrice    Float    @default(0)
-  salePrice    Float    @default(0)
-  reorderLevel Int      @default(10)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  costPrice    Float     @default(0)
+  salePrice    Float     @default(0)
+  reorderLevel Int       @default(10)
+  isActive     Boolean   @default(true)
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   stock     Stock?
   movements Movement[]
   poItems   PurchaseOrderItem[]
   soItems   SalesOrderItem[]
   dispatchItems DispatchItem[]
+
+  @@index([isActive])
+  @@index([deletedAt])
+  @@index([category])
 }
 
 model Warehouse {
-  id        String   @id @default(cuid())
-  code      String   @unique
+  id        String    @id @default(cuid())
+  code      String    @unique
   name      String
   address   String?
   city      String?
-  capacity  Int      @default(0)
-  createdAt DateTime @default(now())
+  capacity  Int       @default(0)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
   locations Location[]
+
+  @@index([deletedAt])
 }
 
 model Location {
@@ -259,14 +277,18 @@ model DispatchItem {
 // ───────────────────────────────────────────────
 
 model TransportVendor {
-  id        String   @id @default(cuid())
-  code      String   @unique
+  id        String    @id @default(cuid())
+  code      String    @unique
   name      String
   phone     String?
   address   String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
+  active    Boolean   @default(true)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
   vehicles  Vehicle[]
+
+  @@index([active])
+  @@index([deletedAt])
 }
 
 model Vehicle {
@@ -284,13 +306,17 @@ model Vehicle {
 // ───────────────────────────────────────────────
 
 model CourierVendor {
-  id        String   @id @default(cuid())
-  code      String   @unique
+  id        String    @id @default(cuid())
+  code      String    @unique
   name      String
   phone     String?
   address   String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
+  active    Boolean   @default(true)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([active])
+  @@index([deletedAt])
 }
 
 // ───────────────────────────────────────────────

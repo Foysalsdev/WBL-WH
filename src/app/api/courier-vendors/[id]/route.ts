@@ -1,35 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { auditLog, apiError, softDelete } from '@/lib/api-middleware'
+import { getUserFromRequest } from '@/lib/security'
 
-// DELETE /api/courier-vendors/[id]
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const existing = await db.courierVendor.findUnique({ where: { id } })
-  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const user = await getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
 
-  await db.courierVendor.delete({ where: { id } })
-  await db.auditLog.create({
-    data: { action: 'DELETE', entity: 'CourierVendor', entityId: id, userName: 'System', details: `Deleted ${existing.code} — ${existing.name}` },
-  })
-  return NextResponse.json({ ok: true })
-}
+  try {
+    const existing = await db.courierVendor.findFirst({ where: { id, deletedAt: null } })
+    if (!existing) return NextResponse.json({ error: 'Courier vendor not found' }, { status: 404 })
 
-// PATCH /api/courier-vendors/[id]
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params
-  const body = await req.json()
-  const existing = await db.courierVendor.findUnique({ where: { id } })
-  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-
-  const updated = await db.courierVendor.update({ where: { id }, data: body })
-  await db.auditLog.create({
-    data: { action: 'UPDATE', entity: 'CourierVendor', entityId: id, userName: 'System', details: `Updated ${updated.code}` },
-  })
-  return NextResponse.json(updated)
+    await softDelete(db.courierVendor, id)
+    await auditLog('DELETE', 'CourierVendor', id, user, `Soft-deleted ${existing.code} — ${existing.name}`)
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    return apiError(e)
+  }
 }

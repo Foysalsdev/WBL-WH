@@ -1,60 +1,77 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { auditLog, apiError, softDelete } from '@/lib/api-middleware'
+import { getUserFromRequest, hashPassword, PASSWORD_SCHEMA } from '@/lib/security'
+import { z } from 'zod'
 
-// PATCH /api/users/[id] — update user (role, active, name)
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+const UserUpdateSchema = z.object({
+  name: z.string().min(1).max(255).trim().optional(),
+  email: z.string().email().max(254).optional(),
+  role: z.enum(['admin', 'manager', 'staff', 'viewer']).optional(),
+  active: z.boolean().optional(),
+  password: PASSWORD_SCHEMA.optional(),
+})
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const body = await req.json()
+  const currentUser = await getUserFromRequest(req)
+  if (!currentUser) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
 
-  const existing = await db.user.findUnique({ where: { id } })
-  if (!existing) return NextResponse.json({ error: 'User not found' }, { status: 404 })
-
-  const { password, ...updateData } = body
-
-  // If password provided, hash it (in production: bcrypt)
-  if (password) {
-    updateData.passwordHash = `$2a$10$dummy_${password}_${Date.now()}`
+  if (currentUser.role !== 'admin' && currentUser.id !== id) {
+    return NextResponse.json({ error: 'Only admins can edit other users' }, { status: 403 })
   }
 
-  const updated = await db.user.update({
-    where: { id },
-    data: updateData,
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      avatar: true,
-      active: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  })
+  let body: unknown
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
 
-  await db.auditLog.create({
-    data: { action: 'UPDATE', entity: 'User', entityId: id, userName: 'System', details: `Updated ${updated.email} — role: ${updated.role}` },
-  })
+  const parsed = UserUpdateSchema.safeParse(body)
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 422 })
 
-  return NextResponse.json(updated)
+  try {
+    const existing = await db.user.findFirst({ where: { id, deletedAt: null } })
+    if (!existing) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+    const { password, ...updateData } = parsed.data
+    if (password) {
+      updateData.passwordHash = await hashPassword(password)
+      updateData.passwordChangedAt = new Date()
+    }
+
+    const updated = await db.user.update({
+      where: { id },
+      data: updateData,
+      select: { id: true, email: true, name: true, role: true, active: true, updatedAt: true },
+    })
+
+    await auditLog('UPDATE', 'User', id, currentUser, `Updated ${updated.email}${password ? ' (password changed)' : ''}`)
+    return NextResponse.json(updated)
+  } catch (e: any) {
+    if (e?.code === 'P2002') return NextResponse.json({ error: 'Email already exists' }, { status: 409 })
+    return apiError(e)
+  }
 }
 
-// DELETE /api/users/[id] — deactivate user (soft delete)
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const existing = await db.user.findUnique({ where: { id } })
-  if (!existing) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+  const currentUser = await getUserFromRequest(req)
+  if (!currentUser) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
 
-  // Soft delete — deactivate instead of hard delete
-  await db.user.update({ where: { id }, data: { active: false } })
-  await db.auditLog.create({
-    data: { action: 'DELETE', entity: 'User', entityId: id, userName: 'System', details: `Deactivated ${existing.email}` },
-  })
+  if (currentUser.role !== 'admin') {
+    return NextResponse.json({ error: 'Only admins can delete users' }, { status: 403 })
+  }
 
-  return NextResponse.json({ ok: true })
+  if (currentUser.id === id) {
+    return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 422 })
+  }
+
+  try {
+    const existing = await db.user.findFirst({ where: { id, deletedAt: null } })
+    if (!existing) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+    await softDelete(db.user, id)
+    await auditLog('DELETE', 'User', id, currentUser, `Soft-deleted ${existing.email}`)
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    return apiError(e)
+  }
 }

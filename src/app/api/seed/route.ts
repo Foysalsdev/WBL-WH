@@ -1,13 +1,20 @@
-import { NextResponse } from 'next/server'
-import { exec } from 'child_process'
-import { promisify } from 'util'
+import { NextRequest, NextResponse } from 'next/server'
+import { getUserFromRequest } from '@/lib/security'
 
-const execAsync = promisify(exec)
+// POST /api/seed — wipe & reseed demo data (admin only)
+export async function POST(req: NextRequest) {
+  const user = await getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  if (user.role !== 'admin') {
+    return NextResponse.json({ error: 'Only admins can reseed data' }, { status: 403 })
+  }
 
-// POST /api/seed — wipe & reseed demo data
-export async function POST() {
   try {
-    // pull tables directly so we don't depend on shell
+    // Use the existing seed script via dynamic import
+    const { exec } = await import('child_process')
+    const { promisify } = await import('util')
+    const execAsync = promisify(exec)
+
     const { PrismaClient } = await import('@prisma/client')
     const db = new PrismaClient()
     await db.auditLog.deleteMany()
@@ -29,6 +36,9 @@ export async function POST() {
     await db.vehicle.deleteMany()
     await db.transportVendor.deleteMany()
     await db.courierVendor.deleteMany()
+    await db.expense.deleteMany()
+    await db.cashIn.deleteMany()
+    await db.requisition.deleteMany()
     await db.user.deleteMany()
 
     // run seed script via bun

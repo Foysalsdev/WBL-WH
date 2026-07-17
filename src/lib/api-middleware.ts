@@ -148,3 +148,16 @@ export function apiError(error: unknown, status = 500): NextResponse {
     { status }
   )
 }
+
+// ─── Soft Delete Helper ────────────────────────────────────────
+// Instead of hard-deleting records, mark them as deleted (deletedAt = now())
+export async function softDelete(model: any, id: string): Promise<void> {
+  await model.update({
+    where: { id },
+    data: { deletedAt: new Date() },
+  })
+}
+
+// ─── Exclude Deleted Records Helper ────────────────────────────
+// Add this to where clauses: where: { ...filters, deletedAt: null }
+export const notDeleted = { deletedAt: null }

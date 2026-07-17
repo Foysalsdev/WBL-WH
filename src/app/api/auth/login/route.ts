@@ -9,6 +9,9 @@ const LoginSchema = z.object({
   password: z.string().min(1).max(128),
 })
 
+const MAX_FAILED_ATTEMPTS = 5
+const LOCKOUT_DURATION_MS = 30 * 60 * 1000 // 30 minutes
+
 export async function POST(req: NextRequest) {
   const ip = getClientIP(req)
   const rateKey = `login:${ip}`
@@ -57,8 +60,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
   }
 
+  // Check if account is locked
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    const minsLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000)
+    return NextResponse.json(
+      { error: `Account locked due to too many failed attempts. Try again in ${minsLeft} minutes.` },
+      { status: 423 }
+    )
+  }
+
   const valid = await verifyPassword(password, user.passwordHash)
   if (!valid) {
+    // Increment failed attempts
+    const newAttempts = user.failedLoginAttempts + 1
+    const shouldLock = newAttempts >= MAX_FAILED_ATTEMPTS
+
+    await db.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginAttempts: newAttempts,
+        lockedUntil: shouldLock ? new Date(Date.now() + LOCKOUT_DURATION_MS) : user.lockedUntil,
+      },
+    })
+
     // Log failed attempt
     await db.auditLog.create({
       data: {
@@ -66,11 +90,26 @@ export async function POST(req: NextRequest) {
         entity: 'User',
         entityId: user.id,
         userName: user.email,
-        details: `Failed login attempt from ${ip}`,
+        details: `Failed login attempt #${newAttempts} from ${ip}${shouldLock ? ' — account locked' : ''}`,
       },
     })
-    return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+
+    const remaining = Math.max(0, MAX_FAILED_ATTEMPTS - newAttempts)
+    return NextResponse.json(
+      { error: shouldLock ? 'Account locked due to too many failed attempts. Try again in 30 minutes.' : `Invalid credentials. ${remaining} attempts remaining.` },
+      { status: 401 }
+    )
   }
+
+  // Reset failed attempts on successful login
+  await db.user.update({
+    where: { id: user.id },
+    data: {
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      lastLoginAt: new Date(),
+    },
+  })
 
   // Get role permissions
   const role = await db.role.findUnique({
@@ -113,3 +152,4 @@ export async function POST(req: NextRequest) {
 
   return res
 }
+

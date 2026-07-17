@@ -1,67 +1,101 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getUserFromRequest } from '@/lib/security'
+import { auditLog, apiError } from '@/lib/api-middleware'
+import { z } from 'zod'
 
 // GET /api/sales-orders
 export async function GET() {
-  const sos = await db.salesOrder.findMany({
-    include: {
-      customer: true,
-      items: { include: { product: true } },
-      dispatches: { include: { items: { include: { product: true } } } },
-    },
-    orderBy: { orderDate: 'desc' },
-  })
-  return NextResponse.json(sos)
+  try {
+    const sos = await db.salesOrder.findMany({
+      where: { customer: { deletedAt: null } },
+      include: {
+        customer: true,
+        items: { include: { product: true } },
+        dispatches: { include: { items: { include: { product: true } } } },
+      },
+      orderBy: { orderDate: 'desc' },
+      take: 200,
+    })
+    return NextResponse.json(sos)
+  } catch (e) {
+    return apiError(e)
+  }
 }
 
 // POST /api/sales-orders — create SO + items, compute total
+const SOInputSchema = z.object({
+  customerId: z.string().min(1),
+  orderDate: z.string().optional(),
+  deliveryDate: z.string().optional(),
+  notes: z.string().max(500).optional().nullable(),
+  items: z.array(z.object({
+    productId: z.string().min(1),
+    quantity: z.number().int().min(1).max(1e6),
+    unitPrice: z.number().min(0).max(1e9),
+  })).min(1, 'At least one item required'),
+})
+
 export async function POST(req: NextRequest) {
-  const body = await req.json()
-  const { customerId, orderDate, deliveryDate, notes, items } = body
-  if (!customerId || !Array.isArray(items) || items.length === 0) {
-    return NextResponse.json({ error: 'customerId and items[] are required' }, { status: 400 })
+  const user = await getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+
+  let body: unknown
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+
+  const parsed = SOInputSchema.safeParse(body)
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 422 })
+
+  try {
+    const { customerId, orderDate, deliveryDate, notes, items } = parsed.data
+
+    const year = new Date().getFullYear()
+    const count = await db.salesOrder.count({ where: { soNumber: { startsWith: `SO-${year}-` } } })
+    const soNumber = `SO-${year}-${String(count + 1).padStart(5, '0')}`
+
+    const totalAmount = items.reduce((s, it) => s + it.quantity * it.unitPrice, 0)
+
+    const so = await db.salesOrder.create({
+      data: {
+        soNumber,
+        customerId,
+        status: 'draft',
+        orderDate: orderDate ? new Date(orderDate) : new Date(),
+        deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
+        notes: notes || null,
+        totalAmount,
+        items: { create: items.map((it) => ({ productId: it.productId, quantity: it.quantity, unitPrice: it.unitPrice })) },
+      },
+      include: { items: true },
+    })
+    await auditLog('CREATE', 'SalesOrder', so.id, user, `Created ${so.soNumber} — TK ${totalAmount}`)
+    return NextResponse.json(so, { status: 201 })
+  } catch (e) {
+    return apiError(e)
   }
-
-  const year = new Date().getFullYear()
-  const count = await db.salesOrder.count({ where: { soNumber: { startsWith: `SO-${year}-` } } })
-  const soNumber = `SO-${year}-${String(count + 1).padStart(5, '0')}`
-
-  const totalAmount = items.reduce((s: number, it: any) => s + it.quantity * it.unitPrice, 0)
-
-  const so = await db.salesOrder.create({
-    data: {
-      soNumber,
-      customerId,
-      status: 'draft',
-      orderDate: orderDate ? new Date(orderDate) : new Date(),
-      deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
-      notes,
-      totalAmount,
-      items: { create: items.map((it: any) => ({ productId: it.productId, quantity: it.quantity, unitPrice: it.unitPrice })) },
-    },
-    include: { items: true },
-  })
-  await db.auditLog.create({ data: { action: 'CREATE', entity: 'SalesOrder', entityId: so.id, userName: 'System', details: `Created ${so.soNumber}` } })
-  return NextResponse.json(so, { status: 201 })
 }
 
 // PATCH /api/sales-orders — 5-step workflow with partial dispatch
 export async function PATCH(req: NextRequest) {
-  const body = await req.json()
-  const { id, action } = body
+  const user = await getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+
+  let body: unknown
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  const { id, action } = body as any
 
   // ─── action: 'status' — simple status change (draft→confirmed, cancel) ───
   if (action === 'status') {
     const so = await db.salesOrder.findUnique({ where: { id } })
     if (!so) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     const updated = await db.salesOrder.update({ where: { id }, data: { status: body.status } })
-    await db.auditLog.create({ data: { action: 'UPDATE', entity: 'SalesOrder', entityId: so.id, userName: 'System', details: `${so.soNumber} → ${body.status}` } })
+    await auditLog('UPDATE', 'SalesOrder', so.id, user, `${so.soNumber} → ${body.status}`)
     return NextResponse.json(updated)
   }
 
   // ─── action: 'pick' — Step 1: record picked quantities ───
   if (action === 'pick') {
-    const { pickedBy, items: pickItems } = body
+    const { pickedBy, items: pickItems } = body as any
     const so = await db.salesOrder.findUnique({ where: { id }, include: { items: true } })
     if (!so) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     if (so.status !== 'confirmed') {
@@ -74,13 +108,13 @@ export async function PATCH(req: NextRequest) {
       where: { id },
       data: { status: 'picked', pickedBy: pickedBy || so.pickedBy, pickedAt: new Date() },
     })
-    await db.auditLog.create({ data: { action: 'POST', entity: 'SalesOrder', entityId: so.id, userName: pickedBy || 'System', details: `${so.soNumber} picked` } })
+    await auditLog('POST', 'SalesOrder', so.id, user, `${so.soNumber} picked`)
     return NextResponse.json({ ok: true, status: 'picked' })
   }
 
   // ─── action: 'scan' — Step 2: barcode verification ───
   if (action === 'scan') {
-    const { scannedBy, items: scanItems } = body
+    const { scannedBy, items: scanItems } = body as any
     const so = await db.salesOrder.findUnique({ where: { id }, include: { items: true } })
     if (!so) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     if (so.status !== 'picked') {
@@ -93,33 +127,33 @@ export async function PATCH(req: NextRequest) {
       where: { id },
       data: { status: 'scanned', scannedBy: scannedBy || so.scannedBy, scannedAt: new Date() },
     })
-    await db.auditLog.create({ data: { action: 'POST', entity: 'SalesOrder', entityId: so.id, userName: scannedBy || 'System', details: `${so.soNumber} scanned` } })
+    await auditLog('POST', 'SalesOrder', so.id, user, `${so.soNumber} scanned`)
     return NextResponse.json({ ok: true, status: 'scanned' })
   }
 
   // ─── action: 'invoice' — Step 3: generate invoice ───
   if (action === 'invoice') {
-    const { invoicedBy, cartonCount, invoiceNo } = body
+    const { invoicedBy, cartonCount, sapInvoiceRef } = body as any
     const so = await db.salesOrder.findUnique({ where: { id } })
     if (!so) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     if (so.status !== 'scanned') {
       return NextResponse.json({ error: `Cannot invoice in '${so.status}' status — must be 'scanned'` }, { status: 400 })
     }
     const year = new Date().getFullYear()
-    const count = await db.salesOrder.count({ where: { invoiceNo: { startsWith: `INV-${year}-` } } })
-    const finalInvoiceNo = invoiceNo || `INV-${year}-${String(count + 1).padStart(5, '0')}`
+    const count = await db.salesOrder.count({ where: { sapInvoiceRef: { startsWith: `INV-${year}-` } } })
+    const finalInvoiceNo = sapInvoiceRef || `INV-${year}-${String(count + 1).padStart(5, '0')}`
     await db.salesOrder.update({
       where: { id },
       data: {
         status: 'invoiced',
-        invoiceNo: finalInvoiceNo,
+        sapInvoiceRef: finalInvoiceNo,
         invoiceDate: new Date(),
         invoicedBy: invoicedBy || so.invoicedBy,
         cartonCount: Number(cartonCount) || 0,
       },
     })
-    await db.auditLog.create({ data: { action: 'POST', entity: 'SalesOrder', entityId: so.id, userName: invoicedBy || 'System', details: `${so.soNumber} invoiced — ${finalInvoiceNo}` } })
-    return NextResponse.json({ ok: true, status: 'invoiced', invoiceNo: finalInvoiceNo })
+    await auditLog('POST', 'SalesOrder', so.id, user, `${so.soNumber} invoiced — ${finalInvoiceNo}`)
+    return NextResponse.json({ ok: true, status: 'invoiced', sapInvoiceRef: finalInvoiceNo })
   }
 
   // ─── action: 'dispatch' — Step 4: partial dispatch with Transport/Courier ───
@@ -134,7 +168,7 @@ export async function PATCH(req: NextRequest) {
       courierName, trackingNumber,             // courier fields
       challanNo, dispatchedBy, notes,
       items: dispatchItems,                    // [{ soItemId, productId, quantity, unitPrice }]
-    } = body
+    } = body as any
 
     const so = await db.salesOrder.findUnique({ where: { id }, include: { items: true } })
     if (!so) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -236,12 +270,7 @@ export async function PATCH(req: NextRequest) {
 
     await db.salesOrder.update({ where: { id }, data: { status: newStatus } })
 
-    await db.auditLog.create({
-      data: {
-        action: 'POST', entity: 'Dispatch', entityId: dispatch.id, userName: dispatchedBy || 'System',
-        details: `${dispatchNo} created for ${so.soNumber} — ${totalQty} units via ${deliveryMethod}`,
-      },
-    })
+    await auditLog('POST', 'Dispatch', dispatch.id, user, `${dispatchNo} created for ${so.soNumber} — ${totalQty} units via ${deliveryMethod}`)
 
     return NextResponse.json({
       ok: true,
@@ -255,7 +284,7 @@ export async function PATCH(req: NextRequest) {
   // ─── action: 'pod' — Step 5: per-dispatch POD ───
   // Now operates on a Dispatch record, not the SO directly
   if (action === 'pod') {
-    const { dispatchId, podStatus, podReceivedBy, podNotes } = body
+    const { dispatchId, podStatus, podReceivedBy, podNotes } = body as any
 
     const dispatch = await db.dispatch.findUnique({
       where: { id: dispatchId },
@@ -289,13 +318,7 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    await db.auditLog.create({
-      data: {
-        action: 'CONFIRM', entity: 'Dispatch', entityId: dispatchId,
-        userName: podReceivedBy || 'System',
-        details: `${dispatch.dispatchNo} POD ${podStatus}`,
-      },
-    })
+    await auditLog('CONFIRM', 'Dispatch', dispatchId, user, `${dispatch.dispatchNo} POD ${podStatus}`)
 
     return NextResponse.json({ ok: true, podStatus })
   }

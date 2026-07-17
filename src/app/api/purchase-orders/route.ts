@@ -1,63 +1,96 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getUserFromRequest } from '@/lib/security'
+import { auditLog, apiError, notDeleted } from '@/lib/api-middleware'
+import { z } from 'zod'
 
 // GET /api/purchase-orders
-export async function GET() {
-  const pos = await db.purchaseOrder.findMany({
-    include: { supplier: true, items: { include: { product: true } } },
-    orderBy: { orderDate: 'desc' },
-  })
-  return NextResponse.json(pos)
+export async function GET(req: NextRequest) {
+  try {
+    const pos = await db.purchaseOrder.findMany({
+      where: { supplier: { deletedAt: null } },
+      include: { supplier: true, items: { include: { product: true } } },
+      orderBy: { orderDate: 'desc' },
+      take: 200,
+    })
+    return NextResponse.json(pos)
+  } catch (e) {
+    return apiError(e)
+  }
 }
 
-// POST /api/purchase-orders  — create PO + items, compute total
+// POST /api/purchase-orders — create PO + items, compute total
+const POInputSchema = z.object({
+  supplierId: z.string().min(1),
+  orderDate: z.string().optional(),
+  expectedDate: z.string().optional(),
+  notes: z.string().max(500).optional().nullable(),
+  items: z.array(z.object({
+    productId: z.string().min(1),
+    quantity: z.number().int().min(1).max(1e6),
+    unitPrice: z.number().min(0).max(1e9),
+  })).min(1, 'At least one item required'),
+})
+
 export async function POST(req: NextRequest) {
-  const body = await req.json()
-  const { supplierId, orderDate, expectedDate, notes, items } = body
-  if (!supplierId || !Array.isArray(items) || items.length === 0) {
-    return NextResponse.json({ error: 'supplierId and items[] are required' }, { status: 400 })
+  const user = await getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+
+  let body: unknown
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+
+  const parsed = POInputSchema.safeParse(body)
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 422 })
+
+  try {
+    const { supplierId, orderDate, expectedDate, notes, items } = parsed.data
+
+    const year = new Date().getFullYear()
+    const count = await db.purchaseOrder.count({ where: { poNumber: { startsWith: `PO-${year}-` } } })
+    const poNumber = `PO-${year}-${String(count + 1).padStart(5, '0')}`
+
+    const totalAmount = items.reduce((s, it) => s + it.quantity * it.unitPrice, 0)
+
+    const po = await db.purchaseOrder.create({
+      data: {
+        poNumber,
+        supplierId,
+        status: 'draft',
+        orderDate: orderDate ? new Date(orderDate) : new Date(),
+        expectedDate: expectedDate ? new Date(expectedDate) : null,
+        notes: notes || null,
+        totalAmount,
+        items: { create: items.map((it) => ({ productId: it.productId, quantity: it.quantity, unitPrice: it.unitPrice })) },
+      },
+      include: { items: true },
+    })
+    await auditLog('CREATE', 'PurchaseOrder', po.id, user, `Created ${po.poNumber} — TK ${totalAmount}`)
+    return NextResponse.json(po, { status: 201 })
+  } catch (e) {
+    return apiError(e)
   }
-
-  const year = new Date().getFullYear()
-  const count = await db.purchaseOrder.count({ where: { poNumber: { startsWith: `PO-${year}-` } } })
-  const poNumber = `PO-${year}-${String(count + 1).padStart(5, '0')}`
-
-  const totalAmount = items.reduce((s: number, it: any) => s + it.quantity * it.unitPrice, 0)
-
-  const po = await db.purchaseOrder.create({
-    data: {
-      poNumber,
-      supplierId,
-      status: 'draft',
-      orderDate: orderDate ? new Date(orderDate) : new Date(),
-      expectedDate: expectedDate ? new Date(expectedDate) : null,
-      notes,
-      totalAmount,
-      items: { create: items.map((it: any) => ({ productId: it.productId, quantity: it.quantity, unitPrice: it.unitPrice })) },
-    },
-    include: { items: true },
-  })
-  await db.auditLog.create({ data: { action: 'CREATE', entity: 'PurchaseOrder', entityId: po.id, userName: 'System', details: `Created ${po.poNumber}` } })
-  return NextResponse.json(po, { status: 201 })
 }
 
 // PATCH /api/purchase-orders — update status OR post GRN (receive items with QC)
 export async function PATCH(req: NextRequest) {
-  const body = await req.json()
-  const { id, action } = body
+  const user = await getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+
+  let body: unknown
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  const { id, action } = body as any
 
   if (action === 'status') {
-    const { status } = body
+    const { status } = body as any
     const po = await db.purchaseOrder.findUnique({ where: { id } })
     if (!po) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     const updated = await db.purchaseOrder.update({ where: { id }, data: { status } })
-    await db.auditLog.create({ data: { action: 'UPDATE', entity: 'PurchaseOrder', entityId: po.id, userName: 'System', details: `${po.poNumber} → ${status}` } })
+    await auditLog('UPDATE', 'PurchaseOrder', po.id, user, `${po.poNumber} → ${status}`)
     return NextResponse.json(updated)
   }
 
   if (action === 'receive') {
-    // Post GRN: receive line items with quality-check breakdown
-    const { grnNumber, vehicleNo, invoiceRef, receivedBy, items: receiptItems } = body
+    const { grnNumber, vehicleNo, invoiceRef, receivedBy, items: receiptItems } = body as any
     const po = await db.purchaseOrder.findUnique({ where: { id }, include: { items: true } })
     if (!po) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     if (po.status === 'received') return NextResponse.json({ error: 'PO already fully received' }, { status: 400 })
@@ -116,12 +149,7 @@ export async function PATCH(req: NextRequest) {
       },
     })
 
-    await db.auditLog.create({
-      data: {
-        action: 'POST', entity: 'StockMovement', entityId: po.id, userName: receivedBy || 'System',
-        details: `GRN ${finalGrn} posted for ${po.poNumber} — ${totalReceived} units received (${totalFailed} rejected)`,
-      },
-    })
+    await auditLog('POST', 'StockMovement', po.id, user, `GRN ${finalGrn} posted for ${po.poNumber} — ${totalReceived} units received (${totalFailed} rejected)`)
     return NextResponse.json({ ok: true, status: newStatus, grnNumber: finalGrn })
   }
 
