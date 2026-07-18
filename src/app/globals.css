@@ -339,8 +339,8 @@
       0 1px 0 0 color-mix(in oklch, white 30%, transparent) inset,
       0 4px 16px -4px rgba(20, 32, 50, 0.08);
     transition:
-      transform var(--duration-base) var(--ease-spring),
-      box-shadow var(--duration-base) var(--ease-spring),
+      transform var(--duration-base) cubic-bezier(0.34, 1.56, 0.64, 1),
+      box-shadow var(--duration-base) cubic-bezier(0.34, 1.56, 0.64, 1),
       background-color var(--duration-base) var(--ease-out);
   }
   .glass-card:hover {
@@ -373,14 +373,9 @@
      iOS-STYLE SPRING ANIMATIONS — smooth, bouncy, natural
      ═══════════════════════════════════════════════════════════════ */
 
-  /* Spring easing — like iOS app open/close */
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --ease-ios: cubic-bezier(0.4, 0.0, 0.2, 1);
-  --ease-ios-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-
   /* Smooth scale-in — iOS modal presentation */
   .animate-ios-scale {
-    animation: ios-scale 320ms var(--ease-spring);
+    animation: ios-scale 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   @keyframes ios-scale {
     from { opacity: 0; transform: scale(0.92) translateY(8px); }
@@ -389,7 +384,7 @@
 
   /* iOS sheet slide-up — bottom sheet style */
   .animate-ios-sheet {
-    animation: ios-sheet 380ms var(--ease-ios-out);
+    animation: ios-sheet 380ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
   @keyframes ios-sheet {
     from { opacity: 0; transform: translateY(40px) scale(0.98); }
@@ -398,7 +393,7 @@
 
   /* iOS fade + slight scale — for popovers, dropdowns */
   .animate-ios-fade {
-    animation: ios-fade 200ms var(--ease-ios-out);
+    animation: ios-fade 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
   @keyframes ios-fade {
     from { opacity: 0; transform: scale(0.96); }
@@ -408,7 +403,7 @@
   /* iOS button press — subtle scale-down on active */
   .ios-press {
     transition:
-      transform 120ms var(--ease-ios),
+      transform 120ms cubic-bezier(0.4, 0, 0.2, 1),
       background-color 150ms var(--ease-out),
       box-shadow 150ms var(--ease-out);
   }
@@ -420,7 +415,7 @@
   .ios-list-item {
     transition:
       background-color 150ms var(--ease-out),
-      transform 120ms var(--ease-ios);
+      transform 120ms cubic-bezier(0.4, 0, 0.2, 1);
   }
   .ios-list-item:active {
     transform: scale(0.99);
@@ -429,7 +424,7 @@
 
   /* Smooth icon transition — for nav items, buttons with icons */
   .ios-icon {
-    transition: transform 200ms var(--ease-spring);
+    transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   .group:hover .ios-icon,
   button:hover .ios-icon {
