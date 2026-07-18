@@ -6,7 +6,8 @@
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "build:cf": "npx @cloudflare/next-on-pages",
-    "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
+    "start": "bun run scripts/start.ts",
+    "start:prod": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "start:cf": "npx wrangler pages dev .vercel/output/static --compatibility-flag=nodejs_compat",
     "deploy:cf": "npx wrangler pages deploy .vercel/output/static --project-name=wbl-wh",
     "lint": "eslint .",
@@ -19,6 +20,8 @@
     "db:reset": "prisma migrate reset",
     "seed": "bun run scripts/seed.ts",
     "reset-admin": "bun run scripts/reset-admin-password.ts",
+    "backup": "bun run scripts/backup.ts",
+    "setup": "bun run scripts/start.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
