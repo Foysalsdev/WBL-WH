@@ -88,7 +88,6 @@ export async function GET(req: NextRequest) {
       // 4. Pending returns
       const pendingReturns = await db.return.findMany({
         where: { status: 'pending' },
-        include: { customer: { select: { name: true } } },
         take: 20,
       })
 
@@ -98,7 +97,7 @@ export async function GET(req: NextRequest) {
           type: 'warning',
           category: 'return_pending',
           title: `Return pending: ${r.returnNo}`,
-          message: `${r.returnType} from ${r.customer?.name || '—'} — ${r.reason}`,
+          message: `${r.returnType} — ${r.reason}`,
           link: 'returns',
           priority: 'medium',
           createdAt: r.createdAt.toISOString(),

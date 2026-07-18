@@ -42,27 +42,33 @@ model User {
 }
 
 model Customer {
-  id        String   @id @default(cuid())
-  code      String   @unique
+  id        String    @id @default(cuid())
+  code      String    @unique
   name      String
   email     String?
   phone     String?
   address   String?
   city      String?
-  createdAt DateTime @default(now())
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
   orders    SalesOrder[]
+
+  @@index([deletedAt])
 }
 
 model Supplier {
-  id        String   @id @default(cuid())
-  code      String   @unique
+  id        String    @id @default(cuid())
+  code      String    @unique
   name      String
   email     String?
   phone     String?
   address   String?
   city      String?
-  createdAt DateTime @default(now())
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
   orders    PurchaseOrder[]
+
+  @@index([deletedAt])
 }
 
 // ───────────────────────────────────────────────
@@ -388,6 +394,60 @@ model OrderTimeline {
   @@index([entityType, entityId])
   @@index([createdAt])
   @@index([entityType, createdAt])
+}
+
+// ───────────────────────────────────────────────
+//  Finance — Requisition, Cash In, Expense
+// ───────────────────────────────────────────────
+
+model Requisition {
+  id           String    @id @default(cuid())
+  reqNo        String    @unique
+  date         DateTime  @default(now())
+  amount       Float
+  purpose      String
+  status       String    @default("pending")
+  approvedBy   String?
+  approvedAt   DateTime?
+  receivedBy   String?
+  receivedAt   DateTime?
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  cashIns      CashIn[]
+}
+
+model CashIn {
+  id            String    @id @default(cuid())
+  cashInNo      String    @unique
+  date          DateTime  @default(now())
+  amount        Float
+  source        String    @default("3i Logistics")
+  requisitionId String?
+  receivedBy    String
+  notes         String?
+  createdAt     DateTime  @default(now())
+  requisition   Requisition? @relation(fields: [requisitionId], references: [id])
+}
+
+model Expense {
+  id            String    @id @default(cuid())
+  expenseNo     String    @unique
+  date          DateTime  @default(now())
+  type          String    @default("procurement")
+  category      String
+  beneficiary   String
+  amount        Float
+  paymentMode   String    @default("cash")
+  memoNo        String?
+  memoDate      DateTime?
+  billNo        String?
+  billDate      DateTime?
+  receiverName  String?
+  paidBy        String?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 // ───────────────────────────────────────────────
