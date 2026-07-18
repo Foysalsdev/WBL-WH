@@ -44,20 +44,35 @@ export function LoginPage() {
 
   function fillDemo(role: string) {
     setEmail(`${role}@whirlpool-bd.com`)
-    setPassword('demo123')
+    setPassword('Admin@2026')
   }
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center p-4 bg-gradient-to-br from-primary/5 via-background to-primary/10 dark:from-primary/20 dark:via-background dark:to-primary/5">
-      <div className="w-full max-w-md">
-        {/* Logo */}
+    <div className="min-h-[100dvh] flex items-center justify-center p-4 bg-gradient-to-br from-primary/5 via-background to-primary/10 dark:from-primary/20 dark:via-background dark:to-primary/5 relative overflow-hidden">
+      {/* Ambient gold orbs (Whirlpool brand) */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-primary/15 blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 h-80 w-80 rounded-full bg-accent/10 blur-3xl" />
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
+        {/* Logo + tagline */}
         <div className="flex flex-col items-center mb-8">
           <img
             src="/whirlpool-logo.svg"
             alt="Whirlpool"
-            className="h-12 mb-3 dark:hidden"
+            className="h-14 mb-3"
             style={{ objectFit: 'contain' }}
           />
+          <p className="text-xs text-muted-foreground italic tracking-wide">
+            Every day, care.
+          </p>
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight">
+            Warehouse Management
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Whirlpool Bangladesh · Central Warehouse
+          </p>
           <img
             src="/whirlpool-logo-white.svg"
             alt="Whirlpool"
