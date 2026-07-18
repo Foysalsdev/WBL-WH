@@ -84,7 +84,7 @@ export function DataTable<T>({
   return (
     <div className="rounded-lg border overflow-hidden bg-card">
       <div style={{ maxHeight }} className="overflow-auto overscroll-contain -webkit-overflow-scrolling-touch">
-        <Table className="min-w-[640px] md:min-w-0">
+        <Table className="min-w-[700px] md:min-w-0 w-full">
           <TableHeader className="sticky top-0 bg-muted/40 backdrop-blur z-10 border-b">
             <TableRow className="hover:bg-transparent">
               {columns.map((col) => {
@@ -94,7 +94,7 @@ export function DataTable<T>({
                   <TableHead
                     key={col.key}
                     className={cn(
-                      'h-11 text-xs font-semibold uppercase tracking-wide text-muted-foreground',
+                      'h-10 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap',
                       col.align === 'right' && 'text-right',
                       col.align === 'center' && 'text-center',
                       col.width,
@@ -143,14 +143,16 @@ export function DataTable<T>({
                   <TableCell
                     key={col.key}
                     className={cn(
-                      'py-3',
+                      'py-2.5 px-3 text-sm overflow-hidden',
                       col.align === 'right' && 'text-right',
                       col.align === 'center' && 'text-center',
                       !col.noPadding && 'px-4',
                       col.className,
                     )}
                   >
-                    {col.cell(row)}
+                    <div className="truncate max-w-[250px]" title={typeof col.cell(row) === 'string' ? col.cell(row) as string : undefined}>
+                      {col.cell(row)}
+                    </div>
                   </TableCell>
                 ))}
               </TableRow>
