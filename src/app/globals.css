@@ -87,9 +87,9 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.15 0.02 264);
 
-  /* Primary = Whirlpool Blue */
-  --primary: oklch(0.43 0.18 264);
-  --primary-foreground: oklch(0.99 0 0);
+  /* Primary = Whirlpool Gold (#eeb111) — official brand color */
+  --primary: oklch(0.78 0.16 84);
+  --primary-foreground: oklch(0.15 0.02 84);
 
   --secondary: oklch(0.95 0.012 250);
   --secondary-foreground: oklch(0.20 0.04 264);
@@ -113,24 +113,24 @@
 
   --border: oklch(0.90 0.005 240);
   --input: oklch(0.90 0.005 240);
-  --ring: oklch(0.43 0.18 264);
+  --ring: oklch(0.78 0.16 84);  /* Whirlpool gold */
 
   /* Chart palette (Whirlpool-derived) */
-  --chart-1: oklch(0.43 0.18 264);   /* blue */
-  --chart-2: oklch(0.83 0.16 84);    /* gold */
+  --chart-1: oklch(0.78 0.16 84);    /* gold (primary) */
+  --chart-2: oklch(0.20 0.02 264);   /* navy */
   --chart-3: oklch(0.55 0.14 200);   /* sky */
   --chart-4: oklch(0.60 0.22 18);    /* rose */
   --chart-5: oklch(0.50 0.2 150);    /* green */
 
-  /* Sidebar — deep navy for premium feel */
-  --sidebar: oklch(0.21 0.05 264);
+  /* Sidebar — deep navy (Whirlpool brand) */
+  --sidebar: oklch(0.20 0.04 264);
   --sidebar-foreground: oklch(0.97 0.005 240);
-  --sidebar-primary: oklch(0.83 0.16 84);
+  --sidebar-primary: oklch(0.78 0.16 84);  /* gold — Whirlpool primary */
   --sidebar-primary-foreground: oklch(0.15 0.04 84);
-  --sidebar-accent: oklch(0.27 0.05 264);
+  --sidebar-accent: oklch(0.26 0.04 264);
   --sidebar-accent-foreground: oklch(0.97 0.005 240);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.83 0.16 84);
+  --sidebar-ring: oklch(0.78 0.16 84);  /* gold */
 
   /* ─── Spacing & rhythm (4px base grid) ─── */
   --space-xs:  4px;
@@ -163,13 +163,14 @@
   --card-foreground: oklch(0.97 0.005 240);
   --popover: oklch(0.19 0.02 264);
   --popover-foreground: oklch(0.97 0.005 240);
-  --primary: oklch(0.60 0.18 264);
-  --primary-foreground: oklch(0.99 0 0);
+  /* Primary = Whirlpool Gold (slightly brighter for dark mode) */
+  --primary: oklch(0.83 0.16 84);
+  --primary-foreground: oklch(0.15 0.04 84);
   --secondary: oklch(0.25 0.02 264);
   --secondary-foreground: oklch(0.97 0.005 240);
   --muted: oklch(0.25 0.02 264);
   --muted-foreground: oklch(0.65 0.015 240);
-  --accent: oklch(0.83 0.16 84);
+  --accent: oklch(0.78 0.16 84);
   --accent-foreground: oklch(0.15 0.04 84);
   --destructive: oklch(0.65 0.20 22);
   --destructive-foreground: oklch(0.99 0 0);
@@ -178,20 +179,20 @@
   --info: oklch(0.62 0.14 220);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.60 0.18 264);
-  --chart-1: oklch(0.60 0.18 264);
-  --chart-2: oklch(0.83 0.16 84);
+  --ring: oklch(0.83 0.16 84);  /* gold */
+  --chart-1: oklch(0.83 0.16 84);   /* gold (primary) */
+  --chart-2: oklch(0.65 0.18 264);  /* blue (secondary) */
   --chart-3: oklch(0.65 0.14 200);
   --chart-4: oklch(0.68 0.22 18);
   --chart-5: oklch(0.62 0.2 150);
   --sidebar: oklch(0.11 0.025 264);
   --sidebar-foreground: oklch(0.96 0.005 240);
-  --sidebar-primary: oklch(0.83 0.16 84);
-  --sidebar-primary-foreground: oklch(0.18 0.04 84);
+  --sidebar-primary: oklch(0.78 0.16 84);  /* gold */
+  --sidebar-primary-foreground: oklch(0.15 0.04 84);
   --sidebar-accent: oklch(0.22 0.03 264);
   --sidebar-accent-foreground: oklch(0.96 0.005 240);
   --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.83 0.16 84);
+  --sidebar-ring: oklch(0.78 0.16 84);  /* gold */
 }
 
 @layer base {
