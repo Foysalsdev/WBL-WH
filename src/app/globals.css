@@ -122,12 +122,12 @@
   --chart-4: oklch(0.60 0.22 18);    /* rose */
   --chart-5: oklch(0.50 0.2 150);    /* green */
 
-  /* Sidebar — deep navy (Whirlpool brand) */
-  --sidebar: oklch(0.20 0.04 264);
+  /* Sidebar — black (Whirlpool brand — no navy) */
+  --sidebar: oklch(0.15 0.005 240);
   --sidebar-foreground: oklch(0.97 0.005 240);
   --sidebar-primary: oklch(0.78 0.16 84);  /* gold — Whirlpool primary */
   --sidebar-primary-foreground: oklch(0.15 0.04 84);
-  --sidebar-accent: oklch(0.26 0.04 264);
+  --sidebar-accent: oklch(0.22 0.005 240);
   --sidebar-accent-foreground: oklch(0.97 0.005 240);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.78 0.16 84);  /* gold */
@@ -185,11 +185,11 @@
   --chart-3: oklch(0.65 0.14 200);
   --chart-4: oklch(0.68 0.22 18);
   --chart-5: oklch(0.62 0.2 150);
-  --sidebar: oklch(0.11 0.025 264);
+  --sidebar: oklch(0.08 0.005 240);
   --sidebar-foreground: oklch(0.96 0.005 240);
   --sidebar-primary: oklch(0.78 0.16 84);  /* gold */
   --sidebar-primary-foreground: oklch(0.15 0.04 84);
-  --sidebar-accent: oklch(0.22 0.03 264);
+  --sidebar-accent: oklch(0.15 0.005 240);
   --sidebar-accent-foreground: oklch(0.96 0.005 240);
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.78 0.16 84);  /* gold */

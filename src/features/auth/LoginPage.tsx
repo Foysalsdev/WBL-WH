@@ -44,14 +44,14 @@ export function LoginPage() {
   return (
     <div className="min-h-[100dvh] flex flex-col lg:flex-row bg-background">
       {/* ═══ Left: Whirlpool Banner (hidden on mobile) ═══ */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-[#0a1320] via-[#142032] to-[#1a2840]">
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-[#000000] via-[#0a0a0a] to-[#1a1a1a]">
         {/* Background image with overlay */}
         <img
           src="/whirlpool-banner.jpg"
           alt="Whirlpool — Every day, care."
-          className="absolute inset-0 h-full w-full object-cover opacity-40"
+          className="absolute inset-0 h-full w-full object-cover opacity-30"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0a1320]/80 via-[#142032]/60 to-[#eeb111]/20" />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/60 to-[#eeb111]/15" />
 
         {/* Gold accent vertical bar (Whirlpool brand) */}
         <div className="absolute left-0 top-0 h-full w-1.5 bg-[#eeb111]" />
