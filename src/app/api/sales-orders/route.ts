@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getUserFromRequest } from '@/lib/security'
-import { auditLog, apiError } from '@/lib/api-middleware'
+import { auditLog, apiError, logTimeline } from '@/lib/api-middleware'
 import { z } from 'zod'
 
 // GET /api/sales-orders
@@ -155,6 +155,7 @@ export async function PATCH(req: NextRequest) {
       where: { id },
       data: { status: 'picked', pickedBy: pickedBy || so.pickedBy, pickedAt: new Date() },
     })
+    await logTimeline('SalesOrder', so.id, so.status, 'picked', 'pick', user, `${so.soNumber} picked`)
     await auditLog('POST', 'SalesOrder', so.id, user, `${so.soNumber} picked — stock reserved`)
     return NextResponse.json({ ok: true, status: 'picked' })
   }
@@ -174,6 +175,7 @@ export async function PATCH(req: NextRequest) {
       where: { id },
       data: { status: 'scanned', scannedBy: scannedBy || so.scannedBy, scannedAt: new Date() },
     })
+    await logTimeline('SalesOrder', so.id, so.status, 'scanned', 'scan', user, `${so.soNumber} scanned`)
     await auditLog('POST', 'SalesOrder', so.id, user, `${so.soNumber} scanned`)
     return NextResponse.json({ ok: true, status: 'scanned' })
   }
@@ -201,6 +203,7 @@ export async function PATCH(req: NextRequest) {
       },
     })
     await auditLog('POST', 'SalesOrder', so.id, user, `${so.soNumber} ready — SAP ref ${sapInvoiceRef}`)
+    await logTimeline('SalesOrder', so.id, so.status, 'ready', 'invoice', user, `${so.soNumber} ready — SAP ${sapInvoiceRef}`)
     return NextResponse.json({ ok: true, status: 'ready', sapInvoiceRef })
   }
 
@@ -322,6 +325,8 @@ export async function PATCH(req: NextRequest) {
     await db.salesOrder.update({ where: { id }, data: { status: newStatus } })
 
     await auditLog('POST', 'Dispatch', dispatch.id, user, `${dispatchNo} created for ${so.soNumber} — ${totalQty} units via ${deliveryMethod}`)
+    await logTimeline('SalesOrder', so.id, so.status, newStatus, 'dispatch', user, `${dispatchNo} via ${deliveryMethod}`, { dispatchNo, totalQty })
+    await logTimeline('Dispatch', dispatch.id, null, 'created', 'dispatch', user, `${dispatchNo} for ${so.soNumber}`)
 
     return NextResponse.json({
       ok: true,
@@ -370,6 +375,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     await auditLog('CONFIRM', 'Dispatch', dispatchId, user, `${dispatch.dispatchNo} POD ${podStatus}`)
+    await logTimeline('Dispatch', dispatchId, dispatch.podStatus, podStatus, 'pod', user, `${dispatch.dispatchNo} POD ${podStatus}`)
 
     return NextResponse.json({ ok: true, podStatus })
   }
