@@ -41,8 +41,40 @@ const ROLE_PERMISSIONS: Record<string, Record<string, string[]>> = {
   },
 }
 
+// ─── Wipe existing data (in dependency-safe order) ────────────
+async function wipeDatabase() {
+  console.log('🧹 Clearing existing data...')
+  const tables = [
+    'returnItem', 'return',
+    'expense', 'cashIn', 'requisition',
+    'auditLog', 'orderTimeline',
+    'dispatchItem', 'dispatch',
+    'salesOrderItem', 'salesOrder',
+    'purchaseOrderItem', 'purchaseOrder',
+    'movement', 'stock',
+    'location', 'warehouse',
+    'vehicle', 'transportVendor', 'courierVendor',
+    'product',
+    'customer', 'supplier',
+    'permission', 'role',
+    'user',
+  ]
+  for (const t of tables) {
+    try {
+      // @ts-ignore
+      await db[t].deleteMany({})
+    } catch (e) {
+      // skip if table doesn't exist
+    }
+  }
+  console.log('✅ Database cleared\n')
+}
+
 async function main() {
   console.log('🌱 Seeding Whirlpool BD warehouse data...')
+
+  // Wipe first to avoid unique constraint errors on re-seed
+  await wipeDatabase()
 
   // ── RBAC: Create roles & permissions ─────────────────
   const roles: Record<string, any> = {}
