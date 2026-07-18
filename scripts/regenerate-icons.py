@@ -1,109 +1,108 @@
 #!/usr/bin/env python3
 """
-Regenerate all app icons with the gold/amber brand theme (#eeb111).
-Replaces the old blue Whirlpool icons (#0c389f) with gold-yellow ones
-matching the application's themeColor.
+Regenerate all app icons with official Whirlpool branding.
+- Black "W" text on gold (#eeb111) background — matches whirlpool-bangladesh.com logo
+- Glossy finish with subtle highlight (iOS-style)
+- Maskable variant for Android PWA
 
 Produces:
   - public/favicon-32.png       (32x32)
   - public/icon-192.png         (192x192, PWA)
   - public/icon-512.png         (512x512, PWA)
   - public/apple-touch-icon.png (180x180)
+  - public/icon-512-maskable.png (512x512, full-bleed for Android)
 """
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import os
-import math
 
-# Brand palette
-GOLD       = (238, 177, 17)        # #eeb111  primary brand
-GOLD_DARK  = (200, 145, 5)         # darker gold for border
+# Official Whirlpool brand colors
+GOLD       = (238, 177, 17)         # #eeb111 — Whirlpool primary
+GOLD_DARK  = (200, 145, 5)          # darker gold for edge
+BLACK      = (15, 20, 35)           # near-black with slight navy
 WHITE      = (255, 255, 255)
-DARK_TEXT  = (28, 25, 23)          # stone-900 for "W" letter
-BG_RADIAL  = (250, 215, 95)        # lighter gold for radial gradient center
 
 OUT_DIR = "/home/z/my-project/public"
 
-def make_icon(size: int, with_letter: bool = True, maskable: bool = False) -> Image.Image:
-    """Generate a gold-themed icon with a 'W' monogram."""
-    # Higher-res canvas for crisp downscale
-    S = size * 4 if size <= 256 else size * 2
+def make_icon(size: int, maskable: bool = False) -> Image.Image:
+    """Generate a glossy Whirlpool-branded icon with 'W' monogram."""
+    # Use 4x supersampling for crisp downscale
+    S = size * 4
     img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    # Maskable icons need full bleed (no transparency) — use solid gold bg
-    # Standard icons get a rounded square with subtle radial gradient
     if maskable:
-        # Full-bleed gold background for maskable
+        # Full-bleed gold background for Android maskable
         d.rectangle([0, 0, S, S], fill=GOLD)
-        # Subtle radial highlight (lighter center)
-        for r in range(S, 0, -8):
-            t = r / S
-            alpha = int(40 * (1 - t))
-            overlay = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-            od = ImageDraw.Draw(overlay)
-            od.ellipse([S//2 - r, S//2 - r, S//2 + r, S//2 + r],
-                       fill=(255, 255, 255, alpha))
-            img = Image.alpha_composite(img, overlay)
-        d = ImageDraw.Draw(img)
     else:
-        # Rounded square background with gold
-        radius = int(S * 0.18)
-        # Outer shadow ring (darker gold)
-        d.rounded_rectangle([S*0.02, S*0.02, S*0.98, S*0.98], radius=radius, fill=GOLD_DARK)
-        # Main face
-        d.rounded_rectangle([S*0.05, S*0.05, S*0.95, S*0.95], radius=int(radius*0.85), fill=GOLD)
-        # Radial highlight (top-left)
-        for r in range(int(S*0.7), 0, -6):
-            t = r / (S * 0.7)
-            alpha = int(50 * (1 - t))
-            overlay = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-            od = ImageDraw.Draw(overlay)
-            od.ellipse([S*0.3 - r, S*0.25 - r, S*0.3 + r, S*0.25 + r],
-                       fill=(255, 255, 255, alpha))
-            img = Image.alpha_composite(img, overlay)
-        d = ImageDraw.Draw(img)
+        # Rounded square — gold background with darker gold border
+        radius = int(S * 0.20)
+        # Shadow/border ring
+        d.rounded_rectangle([S*0.01, S*0.01, S*0.99, S*0.99], radius=radius, fill=GOLD_DARK)
+        # Main gold face
+        d.rounded_rectangle([S*0.04, S*0.04, S*0.96, S*0.96], radius=int(radius*0.88), fill=GOLD)
 
-    if with_letter:
-        # Draw a stylized "W" — bold, slightly arched
-        # Try system fonts; fall back to default
-        font = None
-        font_paths = [
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-            "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
-        ]
-        for fp in font_paths:
-            if os.path.exists(fp):
-                try:
-                    font = ImageFont.truetype(fp, int(S * 0.6))
-                    break
-                except Exception:
-                    pass
-        if font is None:
-            font = ImageFont.load_default()
+    # ═══ Glossy highlight (iOS-style) ═══
+    # Top-half radial highlight — gives the glossy "wet" look
+    highlight = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    hd = ImageDraw.Draw(highlight)
+    # Large soft white gradient on top
+    for r in range(int(S*0.55), 0, -4):
+        alpha = int(70 * (1 - r / (S * 0.55)))
+        hd.ellipse([S*0.25 - r, S*0.15 - r, S*0.75 + r, S*0.45 + r],
+                   fill=(255, 255, 255, alpha))
+    img = Image.alpha_composite(img, highlight)
+    d = ImageDraw.Draw(img)
 
-        # Compute centered position using textbbox
-        text = "W"
-        bbox = d.textbbox((0, 0), text, font=font)
-        tw = bbox[2] - bbox[0]
-        th = bbox[3] - bbox[1]
-        x = (S - tw) // 2 - bbox[0]
-        y = (S - th) // 2 - bbox[1] - int(S * 0.02)
+    # ═══ Bottom shadow for depth ═══
+    shadow = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(shadow)
+    for r in range(int(S*0.4), 0, -3):
+        alpha = int(25 * (1 - r / (S * 0.4)))
+        sd.ellipse([S*0.2 - r, S*0.85 - r*0.3, S*0.8 + r, S*0.95 + r*0.3],
+                   fill=(0, 0, 0, alpha))
+    img = Image.alpha_composite(img, shadow)
+    d = ImageDraw.Draw(img)
 
-        # Subtle shadow under text
-        shadow_offset = max(2, int(S * 0.015))
-        d.text((x + shadow_offset, y + shadow_offset), text,
-               font=font, fill=(0, 0, 0, 60))
-        # Main text — dark stone color
-        d.text((x, y), text, font=font, fill=DARK_TEXT)
+    # ═══ "W" monogram (Whirlpool) ═══
+    # Try to load a bold sans-serif font
+    font = None
+    font_paths = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+    ]
+    for fp in font_paths:
+        if os.path.exists(fp):
+            try:
+                font = ImageFont.truetype(fp, int(S * 0.58))
+                break
+            except Exception:
+                pass
+    if font is None:
+        font = ImageFont.load_default()
 
-        # Add a small underline accent under the W (gold bar like the brand)
-        bar_w = int(S * 0.45)
-        bar_h = max(3, int(S * 0.018))
-        bar_x = (S - bar_w) // 2
-        bar_y = y + th + int(S * 0.04)
-        d.rounded_rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h],
-                            radius=bar_h // 2, fill=DARK_TEXT)
+    # Center the "W"
+    text = "W"
+    bbox = d.textbbox((0, 0), text, font=font)
+    tw = bbox[2] - bbox[0]
+    th = bbox[3] - bbox[1]
+    x = (S - tw) // 2 - bbox[0]
+    y = (S - th) // 2 - bbox[1] - int(S * 0.03)
+
+    # Subtle drop shadow under W (for depth)
+    shadow_offset = max(3, int(S * 0.018))
+    d.text((x + shadow_offset, y + shadow_offset), text,
+           font=font, fill=(0, 0, 0, 50))
+    # Main W — black (matches Whirlpool logo)
+    d.text((x, y), text, font=font, fill=BLACK)
+
+    # ═══ Glossy top reflection on W ═══
+    # Add a thin white highlight on top half of W
+    reflection = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    rd = ImageDraw.Draw(reflection)
+    # Clip to top half
+    rd.rectangle([0, 0, S, S // 2], fill=(255, 255, 255, 40))
+    img = Image.alpha_composite(img, reflection)
 
     # Downscale with LANCZOS for crisp output
     return img.resize((size, size), Image.LANCZOS)
@@ -112,26 +111,21 @@ def make_icon(size: int, with_letter: bool = True, maskable: bool = False) -> Im
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
 
-    # Standard icons (rounded square, with W)
     sizes = {
-        "favicon-32.png": (32, False, False),
-        "icon-192.png":   (192, True, False),
-        "icon-512.png":   (512, True, False),
-        "apple-touch-icon.png": (180, True, False),
+        "favicon-32.png":         (32, False),
+        "icon-192.png":           (192, False),
+        "icon-512.png":           (512, False),
+        "apple-touch-icon.png":   (180, False),
+        "icon-512-maskable.png":  (512, True),
     }
-    for filename, (size, with_letter, maskable) in sizes.items():
-        img = make_icon(size, with_letter=with_letter, maskable=maskable)
+    for filename, (size, maskable) in sizes.items():
+        img = make_icon(size, maskable=maskable)
         out = os.path.join(OUT_DIR, filename)
         img.save(out, "PNG", optimize=True)
-        print(f"✓ {filename} ({size}x{size})")
+        print(f"✓ {filename} ({size}x{size}{' maskable' if maskable else ''})")
 
-    # Also produce a maskable variant for PWA install
-    img = make_icon(512, with_letter=True, maskable=True)
-    out = os.path.join(OUT_DIR, "icon-512-maskable.png")
-    img.save(out, "PNG", optimize=True)
-    print(f"✓ icon-512-maskable.png (512x512, full-bleed)")
-
-    print("\nAll icons regenerated with gold theme (#eeb111).")
+    print("\n✅ All icons regenerated with Whirlpool branding (gold + black W)")
+    print("   Glossy iOS-style finish with radial highlight + depth shadow")
 
 if __name__ == "__main__":
     main()
